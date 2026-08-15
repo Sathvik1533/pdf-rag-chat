@@ -117,3 +117,19 @@ def test_binary_doc_extraction():
     assert len(units) >= 1
     assert "knowledge transfer document" in units[0][2].lower()
 
+
+def test_truncated_pdf_stream_recovery():
+    """Verify that truncated or damaged PDF streams recover text without crashing."""
+    # Construct a deliberately broken / truncated PDF stream with unclosed objects
+    truncated_pdf = (
+        b"%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n"
+        b"2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n"
+        b"3 0 obj\n<< /Type /Page /Parent 2 0 R /Contents 4 0 R >>\nendobj\n"
+        b"4 0 obj\n<< /Length 120 >>\nstream\nBT\n/F1 12 Tf\n(Critical knowledge transfer guidelines for project operations) Tj\nET\nendstream\n"
+        # Truncated without xref table or trailer
+    )
+    units = extract_universal(truncated_pdf, "Knowledge transfer.pdf")
+    assert len(units) >= 1
+    assert "knowledge transfer guidelines" in units[0][2].lower()
+
+

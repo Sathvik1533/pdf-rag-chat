@@ -40,21 +40,102 @@ class ExtractedUnit:
 
 
 def extract_pdf(file_bytes: bytes, filename: str) -> List[ExtractedUnit]:
-    """Extract text from PDF page-by-page."""
+    """
+    Extract text from PDF page-by-page.
+    Tolerates truncated streams, damaged xref tables, compression anomalies,
+    and mislabeled files with multi-tier automated recovery.
+    """
     import pypdf
-    reader = pypdf.PdfReader(io.BytesIO(file_bytes))
     units: List[ExtractedUnit] = []
+
+    # Tier 1: Standard pypdf extraction with lenient parsing
+    try:
+        reader = pypdf.PdfReader(io.BytesIO(file_bytes), strict=False)
+        num_pages = len(reader.pages)
+        for idx in range(num_pages):
+            try:
+                page = reader.pages[idx]
+                page_text = page.extract_text() or ""
+                cleaned = page_text.strip()
+                if cleaned:
+                    units.append(ExtractedUnit(index=idx + 1, label=f"Page {idx + 1}", text=cleaned))
+            except Exception as pe:
+                logger.warning(f"Error on page {idx + 1} of {filename}: {pe}")
+                
+        if units:
+            return units
+    except Exception as e:
+        logger.warning(f"pypdf reader failed on {filename}: {e}. Activating PDF raw stream recovery...")
+
+    # Tier 2: Raw PDF stream decompresion & operator text extraction
+    stream_passages = extract_pdf_raw_streams(file_bytes)
+    if stream_passages:
+        unit_idx = 1
+        chunk_size = 8
+        for start in range(0, len(stream_passages), chunk_size):
+            batch = stream_passages[start:start + chunk_size]
+            units.append(ExtractedUnit(
+                index=unit_idx,
+                label=f"Page {unit_idx}",
+                text="\n\n".join(batch)
+            ))
+            unit_idx += 1
+        if units:
+            return units
+
+    # Tier 3: Binary string & UTF-16 stream recovery (in case the file was converted or renamed)
+    return extract_binary_doc(file_bytes, filename)
+
+
+def extract_pdf_raw_streams(file_bytes: bytes) -> List[str]:
+    """
+    Decompresses flate streams and extracts readable PDF text chunks directly
+    even when PDF xref tables or trailers are truncated or damaged.
+    """
+    import zlib
+    import re
+
+    passages = []
     
-    for idx, page in enumerate(reader.pages, start=1):
-        try:
-            page_text = page.extract_text() or ""
-            cleaned = page_text.strip()
-            if cleaned:
-                units.append(ExtractedUnit(index=idx, label=f"Page {idx}", text=cleaned))
-        except Exception as e:
-            logger.warning(f"Error extracting page {idx} in {filename}: {e}")
-            
-    return units
+    # 1. Search for FlateDecode compressed streams
+    stream_pattern = re.compile(b"stream[\r\n]+(.*?)[\r\n]+endstream", re.DOTALL)
+    for match in stream_pattern.finditer(file_bytes):
+        stream_data = match.group(1)
+        decompressed = None
+        for wbits in [zlib.MAX_WBITS, -zlib.MAX_WBITS, zlib.MAX_WBITS | 32]:
+            try:
+                decompressed = zlib.decompress(stream_data, wbits)
+                break
+            except Exception:
+                continue
+                
+        if decompressed:
+            # Extract strings between parentheses (text) Tj or [(text)] TJ
+            text_matches = re.findall(r'\(([^\)\\]*(?:\\.[^\)\\]*)*)\)\s*(?:Tj|TJ|\')', decompressed.decode("latin-1", errors="ignore"))
+            for tm in text_matches:
+                cleaned = re.sub(r'\\[nrtbf\\()]', ' ', tm).strip()
+                if len(cleaned) > 3 and any(c.isalpha() for c in cleaned):
+                    passages.append(cleaned)
+
+    # 2. Extract uncompressed PDF text operators
+    try:
+        raw_text = file_bytes.decode("latin-1", errors="ignore")
+        uncomp_matches = re.findall(r'\(([^\)\\]*(?:\\.[^\)\\]*)*)\)\s*Tj', raw_text)
+        for tm in uncomp_matches:
+            cleaned = re.sub(r'\\[nrtbf\\()]', ' ', tm).strip()
+            if len(cleaned) > 5 and cleaned not in passages:
+                passages.append(cleaned)
+    except Exception:
+        pass
+
+    # Deduplicate and group into coherent paragraphs
+    filtered_passages = []
+    for p in passages:
+        if len(p) > 8 and not any(meta in p for meta in ["Font", "Identity", "ToUnicode"]):
+            if p not in filtered_passages:
+                filtered_passages.append(p)
+
+    return filtered_passages
 
 
 def extract_docx(file_bytes: bytes, filename: str) -> List[ExtractedUnit]:
