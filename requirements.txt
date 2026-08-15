@@ -1,5 +1,3 @@
---extra-index-url https://download.pytorch.org/whl/cpu
-
 # Backend & Web Framework
 fastapi>=0.115.0
 uvicorn[standard]>=0.30.0
@@ -14,9 +12,7 @@ python-pptx>=0.6.23
 openpyxl>=3.1.2
 langchain-text-splitters>=0.2.0
 
-# Lightweight Local Embeddings & Vector Search
-torch>=2.0.0
-sentence-transformers>=3.0.0
+# High-Speed In-Memory Vector Search
 faiss-cpu>=1.8.0
 numpy>=1.24.0
 

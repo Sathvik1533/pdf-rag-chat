@@ -25,10 +25,8 @@ from typing import List, Dict, Any, Optional, Tuple
 
 import faiss
 import numpy as np
-import torch
 from pypdf import PdfReader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from sentence_transformers import SentenceTransformer
 from groq import Groq
 
 from app.core.extractors import extract_universal, SUPPORTED_EXTENSIONS
@@ -243,16 +241,9 @@ class RAGPipeline:
             logger.info(f"Document produced {len(chunks)} chunks. Capping to top 180 most dense chunks for memory safety.")
             chunks = chunks[:180]
 
-        # Step 3: Embed (micro-batch encoding with batch_size=8 keeps peak tensor RAM < 15MB)
+        # Step 3: Embed (micro-batch encoding using pure NumPy FastDenseVectorizer)
         chunk_texts = [chunk.text for chunk in chunks]
-        with torch.inference_mode():
-            embeddings = self.embedder.encode(
-                chunk_texts,
-                batch_size=8,
-                show_progress_bar=False,
-                normalize_embeddings=True,  # Crucial for exact Cosine Similarity with IndexFlatIP
-                convert_to_numpy=True
-            ).astype("float32")
+        embeddings = self.embedder.encode(chunk_texts).astype("float32")
 
         # Step 4: Index into in-memory FAISS
         index = faiss.IndexFlatIP(self.embedding_dim)
@@ -330,23 +321,16 @@ class RAGPipeline:
     # -------------------------------------------------------------------------
     def retrieve(self, query_text: str, top_k: Optional[int] = None) -> List[Tuple[DocumentChunk, float]]:
         """
-        Retrieve the top-k most semantically similar chunks for a given query.
-        Returns a list of (DocumentChunk, cosine_similarity_score).
+        Stage 5: High-speed cosine similarity lookup via FAISS.
         """
         if self.index is None or len(self.chunks) == 0:
-            raise ValueError("No document has been indexed yet. Please upload a PDF first.")
+            raise ValueError("No document has been indexed yet. Please upload a document first.")
 
-        k = min(top_k or self.top_k, len(self.chunks))
+        k = top_k if top_k is not None else self.top_k
+        k = min(k, len(self.chunks))
 
-        # Embed query using the EXACT same embedding model & normalization as document chunks
-        # WHY: Using a mismatched model or differing normalization destroys the vector alignment.
-        import torch
-        with torch.inference_mode():
-            query_vector = self.embedder.encode(
-                [query_text],
-                normalize_embeddings=True,
-                convert_to_numpy=True
-            ).astype("float32")
+        # Embed query using the EXACT same embedding model as document chunks
+        query_vector = self.embedder.encode([query_text]).astype("float32")
 
         # Search FAISS index: returns distances (inner products = cosine similarities) and indices
         similarities, indices = self.index.search(query_vector, k)
