@@ -108,7 +108,10 @@ class RAGPipeline:
         logger.info(f"Loading embedding model: {embedding_model_name}...")
         # Load local embedding model once into memory
         self.embedder = SentenceTransformer(embedding_model_name)
-        self.embedding_dim = self.embedder.get_sentence_embedding_dimension()
+        if hasattr(self.embedder, "get_embedding_dimension"):
+            self.embedding_dim = self.embedder.get_embedding_dimension()
+        else:
+            self.embedding_dim = self.embedder.get_sentence_embedding_dimension()
 
         # In-memory document storage state (scoped to the uploaded document)
         # WHY IN-MEMORY FAISS: Single-document Q&A does not require a persistent database cluster
