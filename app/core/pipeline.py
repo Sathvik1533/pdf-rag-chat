@@ -108,9 +108,18 @@ class RAGPipeline:
         self.groq_model = groq_model
         self.embedding_model_name = embedding_model_name
 
-        logger.info(f"Loading embedding model: {embedding_model_name}...")
-        # Load local embedding model once into memory
-        self.embedder = SentenceTransformer(embedding_model_name)
+        # Memory optimization for 512MB environments (e.g. Render Free Tier)
+        import torch
+        torch.set_num_threads(1)
+        if hasattr(torch, "set_num_interop_threads"):
+            try:
+                torch.set_num_interop_threads(1)
+            except RuntimeError:
+                pass
+
+        logger.info(f"Loading embedding model: {embedding_model_name} on CPU...")
+        # Load local embedding model with explicit CPU placement
+        self.embedder = SentenceTransformer(embedding_model_name, device="cpu")
         if hasattr(self.embedder, "get_embedding_dimension"):
             self.embedding_dim = self.embedder.get_embedding_dimension()
         else:
@@ -225,12 +234,13 @@ class RAGPipeline:
 
         # Step 3: Embed (batch encoding for speed)
         chunk_texts = [chunk.text for chunk in chunks]
-        embeddings = self.embedder.encode(
-            chunk_texts,
-            show_progress_bar=False,
-            normalize_embeddings=True,  # Crucial for exact Cosine Similarity with IndexFlatIP
-            convert_to_numpy=True
-        ).astype("float32")
+        with torch.inference_mode():
+            embeddings = self.embedder.encode(
+                chunk_texts,
+                show_progress_bar=False,
+                normalize_embeddings=True,  # Crucial for exact Cosine Similarity with IndexFlatIP
+                convert_to_numpy=True
+            ).astype("float32")
 
         # Step 4: Index into in-memory FAISS
         index = faiss.IndexFlatIP(self.embedding_dim)
@@ -307,11 +317,13 @@ class RAGPipeline:
 
         # Embed query using the EXACT same embedding model & normalization as document chunks
         # WHY: Using a mismatched model or differing normalization destroys the vector alignment.
-        query_vector = self.embedder.encode(
-            [query_text],
-            normalize_embeddings=True,
-            convert_to_numpy=True
-        ).astype("float32")
+        import torch
+        with torch.inference_mode():
+            query_vector = self.embedder.encode(
+                [query_text],
+                normalize_embeddings=True,
+                convert_to_numpy=True
+            ).astype("float32")
 
         # Search FAISS index: returns distances (inner products = cosine similarities) and indices
         similarities, indices = self.index.search(query_vector, k)

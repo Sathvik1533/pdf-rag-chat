@@ -1,3 +1,5 @@
+--extra-index-url https://download.pytorch.org/whl/cpu
+
 # Backend & Web Framework
 fastapi>=0.115.0
 uvicorn[standard]>=0.30.0
@@ -9,13 +11,13 @@ pydantic>=2.7.0
 pypdf>=5.0.0
 langchain-text-splitters>=0.2.0
 
-# Local Embeddings & Vector Search (No external embedding API needed)
+# Lightweight Local Embeddings & Vector Search
+torch>=2.0.0
 sentence-transformers>=3.0.0
 faiss-cpu>=1.8.0
-torch>=2.0.0
 numpy>=1.24.0
 
-# LLM Generation via Groq (Ultra-fast inference with Llama 3.3 70B)
+# LLM Generation via Groq
 groq>=0.11.0
 
 # Testing & Utilities
