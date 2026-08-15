@@ -18,7 +18,6 @@ from pydantic import BaseModel, Field
 
 from contextlib import asynccontextmanager
 import gc
-import torch
 
 from app.config import settings
 from app.core.pipeline import RAGPipeline, QueryResult, Citation, GROUNDING_REFUSAL_MESSAGE
@@ -32,17 +31,8 @@ async def lifespan(app: FastAPI):
     """
     Fast, lightweight lifespan startup allowing instant port binding without memory spikes.
     """
-    try:
-        torch.set_num_threads(1)
-        if hasattr(torch, "set_num_interop_threads"):
-            try:
-                torch.set_num_interop_threads(1)
-            except RuntimeError:
-                pass
-        gc.collect()
-        logger.info("Veritas server initialized and ready.")
-    except Exception as e:
-        logger.warning(f"Startup initialization note: {e}")
+    gc.collect()
+    logger.info("Veritas server initialized and ready.")
     yield
     gc.collect()
 
