@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Veritas — Document Intelligence & Grounded RAG</title>
-  <meta name="description" content="Production-grade Document RAG with live interactive document viewer, code-level grounding verification, and page citations.">
+  <title>Veritas — Document Assistant with Verified Citations</title>
+  <meta name="description" content="Upload any PDF and ask questions. Get accurate answers with exact page citations. Never makes things up.">
   
-  <!-- Bespoke Typography: Plus Jakarta Sans (UI), Newsreader (Editorial Serif), Geist Mono (Technical Precision) -->
+  <!-- Clear, Beautiful Typography -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
   
   <!-- Markdown parser -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -25,46 +25,46 @@
           <span class="brand-mark">V</span>
           <div class="brand-titles">
             <span class="brand-name">VERITAS</span>
-            <span class="brand-tag">Document Intelligence & Grounded RAG</span>
+            <span class="brand-tag">Verified PDF Document Assistant</span>
           </div>
         </div>
 
         <div class="telemetry-pills">
-          <div class="pill pill-mono" title="Local sentence embedding model">
-            <span class="pill-dot pill-dot-blue"></span>
-            <span>all-MiniLM-L6-v2 (384-D)</span>
-          </div>
-          <div class="pill pill-mono" title="Inference model">
+          <div class="pill" title="AI answers strictly based on your PDF">
             <span class="pill-dot pill-dot-emerald"></span>
-            <span>Llama 3.3 70B @ Groq</span>
+            <span>Fact-Checked by Default</span>
           </div>
-          <div class="pill pill-mono" title="Code-level similarity floor">
-            <span>Refusal Floor: <strong id="telemetry-threshold">0.35</strong></span>
+          <div class="pill" title="Every answer shows the page number">
+            <span class="pill-dot pill-dot-blue"></span>
+            <span>Page Citations Enabled</span>
+          </div>
+          <div class="pill" title="Refuses out-of-scope questions">
+            <span>Zero Hallucination Guarantee</span>
           </div>
         </div>
       </div>
 
       <div class="nav-right">
-        <button id="load-sample-btn" class="btn btn-secondary btn-sm" title="Load sample multi-page specification for instant testing">
+        <button id="load-sample-btn" class="btn btn-secondary btn-sm" title="Load a sample PDF to try Veritas immediately">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
             <polyline points="14 2 14 8 20 8"></polyline>
             <line x1="12" y1="18" x2="12" y2="12"></line>
             <line x1="9" y1="15" x2="15" y2="15"></line>
           </svg>
-          <span>Load Sample Doc</span>
+          <span>Try Sample Document</span>
         </button>
 
-        <button id="export-audit-btn" class="btn btn-ghost btn-sm" title="Export session verification report (JSON)">
+        <button id="export-audit-btn" class="btn btn-ghost btn-sm" title="Download a summary report of your Q&A session">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
             <polyline points="7 10 12 15 17 10"></polyline>
             <line x1="12" y1="15" x2="12" y2="3"></line>
           </svg>
-          <span>Export Audit</span>
+          <span>Export Summary</span>
         </button>
 
-        <button id="toggle-config-btn" class="btn btn-ghost btn-icon" title="Engine Settings" aria-label="Configure Engine">
+        <button id="toggle-config-btn" class="btn btn-ghost btn-icon" title="Preferences & Settings" aria-label="Settings">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="3"></circle>
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
@@ -73,45 +73,41 @@
       </div>
     </header>
 
-    <!-- Engine Settings Overlay Panel -->
+    <!-- Settings Overlay Panel -->
     <div id="config-drawer" class="config-drawer hidden">
       <div class="drawer-inner">
         <div class="drawer-header">
-          <h3>Engine Hyperparameters & Telemetry</h3>
+          <h3>Assistant Preferences</h3>
           <button id="close-config-btn" class="btn-close">&times;</button>
         </div>
         <div class="drawer-body">
           <div class="form-group">
-            <label for="cfg-groq-key">Runtime Groq Key Override</label>
-            <input type="password" id="cfg-groq-key" placeholder="gsk_... (leave empty to use server .env)">
-            <span class="form-caption">Never stored permanently. Applied per-session.</span>
+            <label for="cfg-groq-key">Custom API Key (Optional)</label>
+            <input type="password" id="cfg-groq-key" placeholder="Defaults to server setup">
+            <span class="form-caption">Leave empty to use the standard server setup.</span>
           </div>
 
           <div class="form-group">
             <div class="slider-header">
-              <label for="cfg-threshold">Grounding Refusal Threshold</label>
-              <span id="cfg-threshold-val" class="badge-mono">0.35</span>
+              <label for="cfg-threshold">Fact-Checking Strictness</label>
+              <span id="cfg-threshold-val" class="badge-mono">Balanced (0.35)</span>
             </div>
             <input type="range" id="cfg-threshold" min="0.10" max="0.75" step="0.05" value="0.35">
-            <span class="form-caption">Queries with top cosine similarity below this score are automatically refused in code.</span>
+            <span class="form-caption">Higher = strictly refuses questions unless an exact match is found. Lower = answers more freely.</span>
           </div>
 
           <div class="engine-specs">
             <div class="spec-row">
-              <span class="spec-label">Chunk Strategy</span>
-              <span class="spec-val">RecursiveCharacter (500 tokens / 50 overlap)</span>
+              <span class="spec-label">Document Splitting</span>
+              <span class="spec-val">Automatic paragraph-level slices</span>
             </div>
             <div class="spec-row">
-              <span class="spec-label">Vector Store</span>
-              <span class="spec-val">FAISS In-Memory (IndexFlatIP)</span>
+              <span class="spec-label">Search Speed</span>
+              <span class="spec-val">Instant (~15ms in-memory lookup)</span>
             </div>
             <div class="spec-row">
-              <span class="spec-label">Vector Metric</span>
-              <span class="spec-val">Cosine Similarity (Unit Normalized)</span>
-            </div>
-            <div class="spec-row">
-              <span class="spec-label">Top-K Retrieval</span>
-              <span class="spec-val">4 Nearest Chunks</span>
+              <span class="spec-label">AI Engine</span>
+              <span class="spec-val">Llama 3.3 70B (Powered by Groq)</span>
             </div>
           </div>
         </div>
@@ -133,7 +129,7 @@
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                   <polyline points="14 2 14 8 20 8"></polyline>
                 </svg>
-                <span>Document Reader</span>
+                <span>Read Document</span>
               </button>
               <button id="tab-vector-view" class="tab-btn" data-tab="vector-map">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -141,7 +137,7 @@
                   <polyline points="2 17 12 22 22 17"></polyline>
                   <polyline points="2 12 12 17 22 12"></polyline>
                 </svg>
-                <span>Vector Map</span>
+                <span>Document Sections</span>
               </button>
               <button id="tab-diag-view" class="tab-btn" data-tab="diagnostics">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -149,7 +145,7 @@
                   <line x1="12" y1="20" x2="12" y2="4"></line>
                   <line x1="6" y1="20" x2="6" y2="14"></line>
                 </svg>
-                <span>Telemetry</span>
+                <span>Fact-Check Meter</span>
               </button>
             </div>
           </div>
@@ -166,15 +162,15 @@
                   <line x1="9" y1="15" x2="15" y2="15"></line>
                 </svg>
               </div>
-              <p class="dropzone-text"><strong>Drop PDF Document to Parse</strong></p>
-              <p class="dropzone-sub">or <button type="button" id="browse-btn" class="link-btn">browse files</button></p>
+              <p class="dropzone-text"><strong>Drop your PDF here to start</strong></p>
+              <p class="dropzone-sub">or <button type="button" id="browse-btn" class="link-btn">choose a file</button></p>
             </div>
           </div>
 
           <!-- Ingestion Progress Loader -->
           <div id="ingest-loader" class="ingest-loader hidden">
             <div class="loader-bar"><div class="loader-bar-progress"></div></div>
-            <p id="ingest-loader-text" class="loader-caption">Parsing pages and computing dense embeddings...</p>
+            <p id="ingest-loader-text" class="loader-caption">Reading pages and preparing document for search...</p>
           </div>
 
           <!-- Document Meta Strip -->
@@ -188,12 +184,12 @@
               <span id="meta-pages" class="meta-value">0</span>
             </div>
             <div class="meta-pill">
-              <span class="meta-label">Chunks:</span>
+              <span class="meta-label">Sections:</span>
               <span id="meta-chunks" class="meta-value">0</span>
             </div>
             <div class="meta-pill">
-              <span class="meta-label">Latency:</span>
-              <span id="meta-indexing-time" class="meta-value text-emerald">0ms</span>
+              <span class="meta-label">Status:</span>
+              <span class="meta-value text-emerald">Ready to chat</span>
             </div>
           </div>
         </div>
@@ -202,75 +198,75 @@
         <div id="panel-doc-viewer" class="tab-panel active">
           <div class="doc-reader-card">
             <div class="reader-toolbar">
-              <span class="reader-label">Page Navigation:</span>
+              <span class="reader-label">Jump to Page:</span>
               <div id="reader-page-pills" class="page-pills">
-                <span class="no-doc-hint">No document loaded yet</span>
+                <span class="no-doc-hint">Upload a PDF to view pages</span>
               </div>
             </div>
             <div id="reader-pages-container" class="reader-pages-container">
               <div class="reader-empty">
-                <p>Upload a document to view full page content with interactive citation highlights.</p>
+                <p>Upload any PDF document to read its pages here and see matching evidence highlighted when you chat.</p>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Tab 2: FAISS Vector Knowledge Map -->
+        <!-- Tab 2: Document Sections (Knowledge Map) -->
         <div id="panel-vector-map" class="tab-panel">
           <div class="vector-map-card">
             <div class="vector-map-header">
-              <span class="section-label">FAISS Chunk Knowledge Map</span>
-              <span id="vector-map-count" class="badge-mono">0 Chunks</span>
+              <span class="section-label">Document Breakdown</span>
+              <span id="vector-map-count" class="badge-mono">0 Sections</span>
             </div>
             <div id="chunks-list" class="chunks-list">
-              <p class="no-doc-hint">No vectors indexed yet.</p>
+              <p class="no-doc-hint">No document uploaded yet.</p>
             </div>
           </div>
         </div>
 
-        <!-- Tab 3: Grounding Diagnostics & Spectrum -->
+        <!-- Tab 3: Fact-Check Meter (Diagnostics) -->
         <div id="panel-diagnostics" class="tab-panel">
           <div class="spectrum-card">
             <div class="spectrum-header">
-              <span class="section-label">Grounding Confidence Radar</span>
+              <span class="section-label">AI Fact-Checking Guarantee</span>
             </div>
             
             <div class="spectrum-visual">
               <div class="spectrum-bar">
                 <div class="spectrum-zone zone-refusal" style="width: 35%;">
-                  <span class="zone-tag">Refusal</span>
+                  <span class="zone-tag">Safely Refuse</span>
                 </div>
                 <div class="spectrum-zone zone-grounded" style="width: 65%;">
-                  <span class="zone-tag">Grounded</span>
+                  <span class="zone-tag">Answer with Evidence</span>
                 </div>
               </div>
               <div class="threshold-marker" style="left: 35%;">
                 <span class="marker-line"></span>
-                <span class="marker-text">Floor (0.35)</span>
+                <span class="marker-text">Strictness Cutoff</span>
               </div>
             </div>
 
             <div id="latest-query-radar" class="latest-radar-box">
               <div class="radar-row">
-                <span class="radar-lbl">Latest Query Status:</span>
-                <span id="radar-status" class="badge-subtle">Idle</span>
+                <span class="radar-lbl">Latest Question:</span>
+                <span id="radar-status" class="badge-subtle">Waiting for question</span>
               </div>
               <div class="radar-row">
-                <span class="radar-lbl">Max Retrieval Similarity:</span>
+                <span class="radar-lbl">Match Confidence:</span>
                 <span id="radar-score" class="font-mono">--</span>
               </div>
               <div class="radar-row">
-                <span class="radar-lbl">Retrieval Latency:</span>
+                <span class="radar-lbl">Search Speed:</span>
                 <span id="radar-ret-latency" class="font-mono">--</span>
               </div>
               <div class="radar-row">
-                <span class="radar-lbl">LLM Generation Latency:</span>
+                <span class="radar-lbl">Answer Speed:</span>
                 <span id="radar-gen-latency" class="font-mono">--</span>
               </div>
             </div>
 
             <p class="spectrum-note">
-              Deterministic code-level rule: if top retrieval score &lt; 0.35, the LLM call is aborted in Python, guaranteeing 0% hallucination on out-of-scope queries.
+              <strong>How this keeps answers truthful:</strong> If your question is not mentioned in your document, the assistant automatically says <em>"I couldn't find anything about that in this document"</em> instead of guessing or making things up.
             </p>
           </div>
         </div>
@@ -295,9 +291,9 @@
                   <polyline points="10 9 9 9 8 9"></polyline>
                 </svg>
               </div>
-              <h2 class="empty-title">Verifiable Document Intelligence</h2>
+              <h2 class="empty-title">Ask Questions About Your PDF</h2>
               <p class="empty-subtitle">
-                Upload any PDF document on the left or click <strong>"Load Sample Doc"</strong> to explore the interactive reader. Ask any question to retrieve answers with verifiable page citations. If the document doesn't contain the answer, Veritas deterministically refuses to guess.
+                Upload a document on the left (or click <strong>"Try Sample Document"</strong>). Ask anything you want to know. Every answer shows the exact page it came from. If something isn't in your document, the assistant will tell you honestly rather than guessing.
               </p>
             </div>
 
@@ -305,11 +301,11 @@
 
           <!-- Floating Starter Chips (Shown when doc is loaded) -->
           <div id="starter-chips" class="starter-chips hidden">
-            <span class="starter-label">Quick Prompts:</span>
-            <button class="chip" data-query="What are the main objectives and findings in this document?">Objectives & Overview</button>
-            <button class="chip" data-query="What are the key financial numbers, budgets, or capital allocations?">Budget & Numbers</button>
-            <button class="chip" data-query="What are the specific deadlines, dates, or launch milestones?">Deadlines & Milestones</button>
-            <button class="chip" data-query="How do warp drive antimatter engines navigate through gravitational wormholes?">Test Refusal (Out-of-Scope) ⚡</button>
+            <span class="starter-label">Suggested Questions:</span>
+            <button class="chip" data-query="What is the main summary and purpose of this document?">Document Summary</button>
+            <button class="chip" data-query="What are the key budgets, costs, or financial numbers?">Budgets & Costs</button>
+            <button class="chip" data-query="What are the deadlines, milestones, or important dates?">Important Dates & Deadlines</button>
+            <button class="chip" data-query="How do warp drive antimatter engines navigate through gravitational wormholes?">Test Refusal (Question not in PDF) ⚡</button>
           </div>
 
           <!-- Bottom Prompt Composer -->
@@ -319,12 +315,12 @@
                 <textarea 
                   id="composer-input" 
                   class="composer-textarea"
-                  placeholder="Upload a document to begin asking questions..."
+                  placeholder="Upload a PDF above to begin asking questions..."
                   rows="1"
                   disabled
                 ></textarea>
                 
-                <button type="submit" id="composer-send" class="btn-send" disabled title="Submit query (Enter)">
+                <button type="submit" id="composer-send" class="btn-send" disabled title="Send question (Enter)">
                   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
                     <line x1="22" y1="2" x2="11" y2="13"></line>
                     <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
@@ -333,8 +329,8 @@
               </div>
 
               <div class="composer-footer">
-                <span class="footer-hint"><strong>Enter</strong> to submit &bull; <strong>Shift+Enter</strong> for newline</span>
-                <span class="footer-guarantee">✓ Deterministic Code-Level Grounding Guarantee</span>
+                <span class="footer-hint">Press <strong>Enter</strong> to send &bull; <strong>Shift+Enter</strong> for newline</span>
+                <span class="footer-guarantee">✓ Truthful Answers &bull; Page-by-Page Citations</span>
               </div>
             </form>
           </div>

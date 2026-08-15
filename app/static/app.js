@@ -1,5 +1,5 @@
 /**
- * VERITAS — Document Intelligence & Grounded RAG
+ * VERITAS — Verified PDF Document Assistant
  * Client Application Controller
  */
 
@@ -18,7 +18,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const metaFilename = document.getElementById('meta-filename');
   const metaPages = document.getElementById('meta-pages');
   const metaChunks = document.getElementById('meta-chunks');
-  const metaIndexingTime = document.getElementById('meta-indexing-time');
 
   const tabBtns = document.querySelectorAll('.tab-btn');
   const tabPanels = document.querySelectorAll('.tab-panel');
@@ -52,7 +51,7 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentDossier = null;
   let conversationHistory = [];
 
-  // Check initial engine status
+  // Check initial status
   refreshEngineStatus();
 
   // --------------------------------------------------------------------------
@@ -84,23 +83,26 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   cfgThreshold.addEventListener('input', (e) => {
-    const val = parseFloat(e.target.value).toFixed(2);
-    cfgThresholdVal.textContent = val;
-    telemetryThreshold.textContent = val;
-    updateSpectrumMarker(parseFloat(val));
+    const val = parseFloat(e.target.value);
+    let label = 'Balanced (0.35)';
+    if (val < 0.25) label = 'Relaxed (' + val.toFixed(2) + ')';
+    else if (val > 0.45) label = 'Strict (' + val.toFixed(2) + ')';
+    else label = 'Balanced (' + val.toFixed(2) + ')';
+
+    cfgThresholdVal.textContent = label;
+    telemetryThreshold.textContent = val.toFixed(2);
+    updateSpectrumMarker(val);
   });
 
   function updateSpectrumMarker(val) {
     const marker = document.querySelector('.threshold-marker');
     const refusalZone = document.querySelector('.zone-refusal');
     const groundedZone = document.querySelector('.zone-grounded');
-    const markerText = document.querySelector('.marker-text');
     
     const pct = Math.min(Math.max((val * 100).toFixed(0), 10), 90);
     if (marker) marker.style.left = `${pct}%`;
     if (refusalZone) refusalZone.style.width = `${pct}%`;
     if (groundedZone) groundedZone.style.width = `${100 - pct}%`;
-    if (markerText) markerText.textContent = `Floor (${val})`;
   }
 
   // --------------------------------------------------------------------------
@@ -132,7 +134,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (files.length > 0 && files[0].name.toLowerCase().endsWith('.pdf')) {
       ingestPdfFile(files[0]);
     } else {
-      alert('Please select a valid PDF file.');
+      alert('Please drop a valid PDF document.');
     }
   });
 
@@ -142,21 +144,21 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // Load Sample Document Action
+  // Try Sample Document
   loadSampleBtn.addEventListener('click', async () => {
     try {
       loadSampleBtn.disabled = true;
       loadSampleBtn.innerHTML = '<span>Loading...</span>';
       
       const res = await fetch('/sample-pdf');
-      if (!res.ok) throw new Error('Could not fetch sample specification');
+      if (!res.ok) throw new Error('Could not fetch sample document');
       
       const blob = await res.blob();
       const sampleFile = new File([blob], 'sample_project_orion.pdf', { type: 'application/pdf' });
       await ingestPdfFile(sampleFile);
 
     } catch (err) {
-      alert(`Failed to load sample: ${err.message}`);
+      alert(`Could not load sample: ${err.message}`);
     } finally {
       loadSampleBtn.disabled = false;
       loadSampleBtn.innerHTML = `
@@ -166,7 +168,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <line x1="12" y1="18" x2="12" y2="12"></line>
           <line x1="9" y1="15" x2="15" y2="15"></line>
         </svg>
-        <span>Load Sample Doc</span>
+        <span>Try Sample Document</span>
       `;
     }
   });
@@ -177,7 +179,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // UI Loading State
     ingestLoader.classList.remove('hidden');
-    ingestLoaderText.textContent = `Extracting text & vectorizing "${file.name}"...`;
+    ingestLoaderText.textContent = `Reading "${file.name}" and preparing searchable pages...`;
     dropzone.classList.add('hidden');
     docMetaStrip.classList.add('hidden');
 
@@ -188,9 +190,9 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       const data = await response.json();
-      if (!response.ok) throw new Error(data.detail || 'Ingestion failed');
+      if (!response.ok) throw new Error(data.detail || 'Upload failed');
 
-      // Fetch Full Document Dossier (Pages & Chunks)
+      // Fetch Full Document Data
       const dossierRes = await fetch('/document/dossier');
       if (dossierRes.ok) {
         currentDossier = await dossierRes.json();
@@ -199,9 +201,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Update Meta Strip
       metaFilename.textContent = data.filename;
-      metaPages.textContent = data.total_pages;
-      metaChunks.textContent = data.total_chunks;
-      metaIndexingTime.textContent = (currentDossier && currentDossier.indexing_time_ms) ? `${currentDossier.indexing_time_ms}ms` : '42ms';
+      metaPages.textContent = `${data.total_pages} pages`;
+      metaChunks.textContent = `${data.total_chunks} sections`;
 
       ingestLoader.classList.add('hidden');
       docMetaStrip.classList.remove('hidden');
@@ -210,40 +211,40 @@ document.addEventListener('DOMContentLoaded', () => {
       // Unlock Composer
       composerInput.disabled = false;
       composerSend.disabled = false;
-      composerInput.placeholder = `Ask anything about ${data.filename}...`;
+      composerInput.placeholder = `Ask any question about ${data.filename}...`;
       composerInput.focus();
 
       starterChips.classList.remove('hidden');
       if (emptyState) emptyState.classList.add('hidden');
 
-      appendNotice(`📄 **Dossier Ingested:** "${data.filename}" (${data.total_pages} pages, ${data.total_chunks} FAISS vectors). Use the left reader to inspect pages or ask questions below.`);
+      appendNotice(`📄 **"${data.filename}" is ready!** ${data.total_pages} pages parsed. You can read the document on the left, or ask any question below.`);
 
     } catch (err) {
       console.error(err);
       ingestLoader.classList.add('hidden');
       dropzone.classList.remove('hidden');
-      alert(`Ingestion Error: ${err.message}`);
+      alert(`Could not open document: ${err.message}`);
     }
   }
 
   // --------------------------------------------------------------------------
-  // Render Document Reader & Vector Map
+  // Render Document Reader & Sections
   // --------------------------------------------------------------------------
   function renderDocumentDossier(dossier) {
     if (!dossier || !dossier.pages) return;
 
-    // 1. Render Page Pills
+    // 1. Render Page Navigation Pills
     readerPagePills.innerHTML = '';
     dossier.pages.forEach(p => {
       const pill = document.createElement('button');
       pill.className = 'page-pill-btn';
       pill.textContent = `Page ${p.page}`;
-      pill.title = `Jump to Page ${p.page} (${p.char_count} chars)`;
+      pill.title = `Jump to Page ${p.page}`;
       pill.addEventListener('click', () => scrollToPage(p.page));
       readerPagePills.appendChild(pill);
     });
 
-    // 2. Render Authentic Paper Sheets
+    // 2. Render Paper Sheets
     readerPagesContainer.innerHTML = '';
     dossier.pages.forEach(p => {
       const sheet = document.createElement('article');
@@ -260,17 +261,17 @@ document.addEventListener('DOMContentLoaded', () => {
       readerPagesContainer.appendChild(sheet);
     });
 
-    // 3. Render Vector Map Chunks
+    // 3. Render Sections List
     if (dossier.chunks) {
-      vectorMapCount.textContent = `${dossier.chunks.length} Chunks`;
+      vectorMapCount.textContent = `${dossier.chunks.length} Sections`;
       chunksList.innerHTML = '';
       dossier.chunks.forEach(ch => {
         const item = document.createElement('div');
         item.className = 'chunk-item-card';
         item.innerHTML = `
           <div class="chunk-item-meta">
-            <span>Chunk #${ch.chunk_id}</span>
-            <span>Page ${ch.page} &bull; ${ch.char_count} chars</span>
+            <span>Section #${ch.chunk_id + 1}</span>
+            <span>Page ${ch.page}</span>
           </div>
           <div class="chunk-item-body">${escapeHtml(ch.text)}</div>
         `;
@@ -293,7 +294,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const textContainer = document.getElementById(`page-text-${pageNum}`);
         if (textContainer) {
           const originalText = textContainer.textContent;
-          // Find closest matching snippet words
           const cleanSnippet = highlightSnippet.replace(/\.\.\.$/, '').trim();
           if (cleanSnippet.length > 20 && originalText.includes(cleanSnippet.substring(0, 30))) {
             const matchIndex = originalText.indexOf(cleanSnippet.substring(0, 30));
@@ -305,7 +305,6 @@ document.addEventListener('DOMContentLoaded', () => {
               
               textContainer.innerHTML = `${escapeHtml(before)}<mark class="passage-highlight">${escapeHtml(matched)}</mark>${escapeHtml(after)}`;
               
-              // Reset highlight after 6 seconds
               setTimeout(() => {
                 textContainer.innerHTML = escapeHtml(originalText);
               }, 6000);
@@ -322,7 +321,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // --------------------------------------------------------------------------
-  // Starter Prompt Chips
+  // Suggested Questions
   // --------------------------------------------------------------------------
   document.querySelectorAll('.chip').forEach(chip => {
     chip.addEventListener('click', () => {
@@ -356,16 +355,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const query = composerInput.value.trim();
     if (!query) return;
 
-    // Reset input state
+    // Reset input
     composerInput.value = '';
     composerInput.style.height = 'auto';
     composerInput.disabled = true;
     composerSend.disabled = true;
 
-    // Append User Message
+    // Append User Question
     appendUserBubble(query);
 
-    // Append Assistant Loading Indicator
+    // Append Loading Indicator
     const loaderId = 'loading-' + Date.now();
     appendLoadingBubble(loaderId);
 
@@ -386,14 +385,14 @@ document.addEventListener('DOMContentLoaded', () => {
       removeLoadingBubble(loaderId);
 
       if (!response.ok) {
-        appendNotice(`❌ **Engine Error:** ${data.detail || 'Failed to generate response'}`);
+        appendNotice(`❌ **Notice:** ${data.detail || 'Could not generate answer.'}`);
         return;
       }
 
       // Update Telemetry Panel
       updateTelemetryRadar(data);
 
-      // Record in Session Audit History
+      // Record in Session History
       conversationHistory.push({
         timestamp: new Date().toISOString(),
         query,
@@ -404,7 +403,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     } catch (err) {
       removeLoadingBubble(loaderId);
-      appendNotice(`❌ **Network Error:** ${err.message}`);
+      appendNotice(`❌ **Network Notice:** ${err.message}`);
     } finally {
       composerInput.disabled = false;
       composerSend.disabled = false;
@@ -414,10 +413,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function updateTelemetryRadar(data) {
     if (radarStatus) {
-      radarStatus.textContent = data.grounded ? 'Grounded ✓' : 'Refused ⚠️';
+      radarStatus.textContent = data.grounded ? 'Answer Found in PDF ✓' : 'Question Not in Document (Safely Refused) ⚠️';
       radarStatus.className = data.grounded ? 'badge-mono text-emerald' : 'badge-mono';
     }
-    if (radarScore) radarScore.textContent = `${(data.top_similarity * 100).toFixed(1)}%`;
+    if (radarScore) radarScore.textContent = `${(data.top_similarity * 100).toFixed(1)}% Confidence`;
     if (radarRetLatency) radarRetLatency.textContent = data.retrieval_time_ms ? `${data.retrieval_time_ms}ms` : '12ms';
     if (radarGenLatency) radarGenLatency.textContent = data.generation_time_ms ? `${data.generation_time_ms}ms` : '390ms';
   }
@@ -433,7 +432,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const senderTag = document.createElement('div');
     senderTag.className = 'msg-sender-tag';
-    senderTag.textContent = 'Query';
+    senderTag.textContent = 'Your Question';
 
     const bubble = document.createElement('div');
     bubble.className = 'msg-bubble';
@@ -453,23 +452,23 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const senderTag = document.createElement('div');
     senderTag.className = 'msg-sender-tag';
-    senderTag.textContent = 'Veritas Synthesis';
+    senderTag.textContent = 'Veritas Answer';
 
     const bubble = document.createElement('div');
     bubble.className = 'msg-bubble';
 
-    // Grounding Audit Pill
+    // Fact-Check Badge
     const auditBadge = document.createElement('div');
     if (data.grounded) {
       auditBadge.className = 'grounding-audit-badge audit-grounded';
-      auditBadge.innerHTML = `✓ Grounded in Document &bull; ${(data.top_similarity * 100).toFixed(1)}% Match &bull; ⚡ ${data.retrieval_time_ms || 14}ms Retrieval`;
+      auditBadge.innerHTML = `✓ Verified from Document &bull; ${(data.top_similarity * 100).toFixed(0)}% Match &bull; ⚡ Instant Response`;
     } else {
       auditBadge.className = 'grounding-audit-badge audit-refusal';
-      auditBadge.innerHTML = `⚠️ Low Confidence (${(data.top_similarity * 100).toFixed(1)}% &lt; ${(data.threshold * 100).toFixed(0)}%) &bull; Grounding Refusal Enforced`;
+      auditBadge.innerHTML = `⚠️ Not Found in Document &bull; Safely Refused to Prevent Making Things Up`;
     }
     bubble.appendChild(auditBadge);
 
-    // Answer Markdown Body
+    // Answer Body
     const markdownBody = document.createElement('div');
     markdownBody.className = 'answer-body';
     markdownBody.innerHTML = window.marked ? marked.parse(data.answer) : data.answer;
@@ -483,8 +482,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const deckHeader = document.createElement('div');
       deckHeader.className = 'evidence-header';
       deckHeader.innerHTML = `
-        <span>Verifiable Evidence Deck (${data.citations.length} Chunks Used):</span>
-        <span style="font-size:0.65rem;font-weight:500;color:var(--text-muted);text-transform:none;">Click any card to jump to page in reader</span>
+        <span>Evidence from your Document (${data.citations.length} sections found):</span>
+        <span style="font-size:0.65rem;font-weight:500;color:var(--text-muted);text-transform:none;">Click any box below to jump to that page</span>
       `;
       deck.appendChild(deckHeader);
 
@@ -494,14 +493,14 @@ document.addEventListener('DOMContentLoaded', () => {
       data.citations.forEach((c) => {
         const card = document.createElement('div');
         card.className = 'evidence-card';
-        card.title = `Click to jump to Page ${c.page} and highlight this excerpt`;
+        card.title = `Click to view Page ${c.page} in the reader`;
         card.innerHTML = `
           <div class="evidence-top">
             <span>Page ${c.page}</span>
-            <span>Match: ${(c.similarity_score * 100).toFixed(1)}%</span>
+            <span>${(c.similarity_score * 100).toFixed(0)}% match</span>
           </div>
           <div class="evidence-quote">"${c.excerpt}"</div>
-          <span class="jump-btn-tag">↗ Jump to Page ${c.page}</span>
+          <span class="jump-btn-tag">↗ Go to Page ${c.page} in Reader</span>
         `;
         card.addEventListener('click', () => {
           scrollToPage(c.page, c.excerpt);
@@ -523,7 +522,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
         <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
       </svg>
-      <span>Copy Markdown</span>
+      <span>Copy Answer</span>
     `;
     copyBtn.addEventListener('click', () => {
       navigator.clipboard.writeText(data.answer).then(() => {
@@ -534,7 +533,7 @@ document.addEventListener('DOMContentLoaded', () => {
               <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
               <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
             </svg>
-            <span>Copy Markdown</span>
+            <span>Copy Answer</span>
           `;
         }, 2000);
       });
@@ -573,7 +572,7 @@ document.addEventListener('DOMContentLoaded', () => {
     bubble.innerHTML = `
       <div style="display:flex;align-items:center;gap:0.6rem;font-size:0.85rem;color:var(--text-secondary);">
         <div class="loader-bar" style="width:24px;height:4px;border-radius:2px;"><div class="loader-bar-progress"></div></div>
-        <span>Searching semantic vector space & synthesizing answer...</span>
+        <span>Searching your PDF for matching facts & writing answer...</span>
       </div>
     `;
 
@@ -591,38 +590,29 @@ document.addEventListener('DOMContentLoaded', () => {
     chatThread.scrollTop = chatThread.scrollHeight;
   }
 
-  // --------------------------------------------------------------------------
-  // Export Audit Report
-  // --------------------------------------------------------------------------
+  // Export Summary
   exportAuditBtn.addEventListener('click', () => {
     if (!currentDossier) {
-      alert('Please upload a document first to generate an audit report.');
+      alert('Please upload or load a PDF document first.');
       return;
     }
 
     const auditData = {
-      project: "Veritas Document Intelligence & Grounded RAG",
+      title: "Veritas Document Q&A Summary",
       timestamp: new Date().toISOString(),
       document: {
         filename: currentDossier.filename,
         total_pages: currentDossier.total_pages,
-        total_chunks: currentDossier.total_chunks,
-        indexing_latency_ms: currentDossier.indexing_time_ms
+        total_sections: currentDossier.total_chunks
       },
-      engine_configuration: {
-        embedding_model: "all-MiniLM-L6-v2",
-        vector_store: "FAISS In-Memory",
-        grounding_refusal_floor: parseFloat(cfgThreshold.value),
-        groq_model: "llama-3.3-70b-versatile"
-      },
-      interaction_audit: conversationHistory
+      qa_history: conversationHistory
     };
 
     const blob = new Blob([JSON.stringify(auditData, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `veritas-audit-${Date.now()}.json`;
+    a.download = `veritas-qa-summary-${Date.now()}.json`;
     a.click();
     URL.revokeObjectURL(url);
   });
@@ -634,16 +624,14 @@ document.addEventListener('DOMContentLoaded', () => {
         const data = await res.json();
         if (data.indexed) {
           metaFilename.textContent = data.document_name;
-          metaPages.textContent = data.total_pages;
-          metaChunks.textContent = data.total_chunks;
-          metaIndexingTime.textContent = `${data.indexing_time_ms}ms`;
+          metaPages.textContent = `${data.total_pages} pages`;
+          metaChunks.textContent = `${data.total_chunks} sections`;
           docMetaStrip.classList.remove('hidden');
           composerInput.disabled = false;
           composerSend.disabled = false;
-          composerInput.placeholder = `Ask anything about ${data.document_name}...`;
+          composerInput.placeholder = `Ask any question about ${data.document_name}...`;
           starterChips.classList.remove('hidden');
 
-          // Fetch full dossier
           const dossierRes = await fetch('/document/dossier');
           if (dossierRes.ok) {
             currentDossier = await dossierRes.json();
@@ -652,7 +640,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
     } catch (e) {
-      console.log('Status polling offline');
+      console.log('Status offline');
     }
   }
 
