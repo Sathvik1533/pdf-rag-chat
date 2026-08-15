@@ -98,10 +98,6 @@ body.theme-dark {
   --amber-text: hsl(38, 92%, 60%);
   --amber-border: rgba(245, 158, 11, 0.35);
 }
-  --r-md: 10px;
-  --r-lg: 14px;
-  --r-full: 9999px;
-}
 
 /* Base Reset */
 *, *::before, *::after {
