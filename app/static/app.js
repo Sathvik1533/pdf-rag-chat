@@ -131,10 +131,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   dropzone.addEventListener('drop', (e) => {
     const files = e.dataTransfer.files;
-    if (files.length > 0 && files[0].name.toLowerCase().endsWith('.pdf')) {
+    if (files.length > 0) {
       ingestPdfFile(files[0]);
-    } else {
-      alert('Please drop a valid PDF document.');
     }
   });
 
@@ -179,7 +177,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // UI Loading State
     ingestLoader.classList.remove('hidden');
-    ingestLoaderText.textContent = `Reading "${file.name}" and preparing searchable pages...`;
+    ingestLoaderText.textContent = `Reading "${file.name}" and extracting searchable content...`;
     dropzone.classList.add('hidden');
     docMetaStrip.classList.add('hidden');
 
@@ -201,8 +199,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
       // Update Meta Strip
       metaFilename.textContent = data.filename;
-      metaPages.textContent = `${data.total_pages} pages`;
-      metaChunks.textContent = `${data.total_chunks} sections`;
+      metaPages.textContent = `${data.total_pages} sections`;
+      metaChunks.textContent = `${data.total_chunks} chunks`;
 
       ingestLoader.classList.add('hidden');
       docMetaStrip.classList.remove('hidden');
@@ -217,7 +215,7 @@ document.addEventListener('DOMContentLoaded', () => {
       starterChips.classList.remove('hidden');
       if (emptyState) emptyState.classList.add('hidden');
 
-      appendNotice(`📄 **"${data.filename}" is ready!** ${data.total_pages} pages parsed. You can read the document on the left, or ask any question below.`);
+      appendNotice(`📄 **"${data.filename}" is ready!** ${data.total_pages} sections indexed. Read the document on the left or ask any question below.`);
 
     } catch (err) {
       console.error(err);
@@ -238,8 +236,8 @@ document.addEventListener('DOMContentLoaded', () => {
     dossier.pages.forEach(p => {
       const pill = document.createElement('button');
       pill.className = 'page-pill-btn';
-      pill.textContent = `Page ${p.page}`;
-      pill.title = `Jump to Page ${p.page}`;
+      pill.textContent = p.label || `Section ${p.page}`;
+      pill.title = `Jump to ${p.label || ('Section ' + p.page)}`;
       pill.addEventListener('click', () => scrollToPage(p.page));
       readerPagePills.appendChild(pill);
     });
@@ -251,9 +249,10 @@ document.addEventListener('DOMContentLoaded', () => {
       sheet.className = 'paper-sheet';
       sheet.id = `doc-page-${p.page}`;
       
+      const labelText = p.label || `Section ${p.page}`;
       sheet.innerHTML = `
         <div class="paper-sheet-header">
-          <span>Page ${p.page} of ${dossier.total_pages}</span>
+          <span>${escapeHtml(labelText)} of ${dossier.total_pages}</span>
           <span>${p.char_count} characters</span>
         </div>
         <div class="paper-text-body" id="page-text-${p.page}">${escapeHtml(p.text)}</div>
@@ -263,15 +262,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 3. Render Sections List
     if (dossier.chunks) {
-      vectorMapCount.textContent = `${dossier.chunks.length} Sections`;
+      vectorMapCount.textContent = `${dossier.chunks.length} Chunks`;
       chunksList.innerHTML = '';
       dossier.chunks.forEach(ch => {
         const item = document.createElement('div');
         item.className = 'chunk-item-card';
+        const chunkLabel = ch.unit_label || `Section ${ch.page}`;
         item.innerHTML = `
           <div class="chunk-item-meta">
-            <span>Section #${ch.chunk_id + 1}</span>
-            <span>Page ${ch.page}</span>
+            <span>Chunk #${ch.chunk_id + 1}</span>
+            <span>${escapeHtml(chunkLabel)}</span>
           </div>
           <div class="chunk-item-body">${escapeHtml(ch.text)}</div>
         `;
@@ -493,14 +493,15 @@ document.addEventListener('DOMContentLoaded', () => {
       data.citations.forEach((c) => {
         const card = document.createElement('div');
         card.className = 'evidence-card';
-        card.title = `Click to view Page ${c.page} in the reader`;
+        const label = c.unit_label || `Page ${c.page}`;
+        card.title = `Click to view ${label} in the reader`;
         card.innerHTML = `
           <div class="evidence-top">
-            <span>Page ${c.page}</span>
+            <span>${escapeHtml(label)}</span>
             <span>${(c.similarity_score * 100).toFixed(0)}% match</span>
           </div>
-          <div class="evidence-quote">"${c.excerpt}"</div>
-          <span class="jump-btn-tag">↗ Go to Page ${c.page} in Reader</span>
+          <div class="evidence-quote">"${escapeHtml(c.excerpt)}"</div>
+          <span class="jump-btn-tag">↗ Go to ${escapeHtml(label)} in Reader</span>
         `;
         card.addEventListener('click', () => {
           scrollToPage(c.page, c.excerpt);

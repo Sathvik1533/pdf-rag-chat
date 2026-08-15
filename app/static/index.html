@@ -152,10 +152,10 @@
           </div>
 
           <!-- Document Upload Dropzone -->
-          <div id="dropzone" class="dropzone" title="Upload PDF: Drag and drop a PDF file here or click to browse">
-            <input type="file" id="pdf-file-input" accept=".pdf" class="hidden-input" title="File input">
+          <div id="dropzone" class="dropzone" title="Upload Document: Drag and drop PDF, Word, Excel, PowerPoint, CSV, JSON, Code, or Text files">
+            <input type="file" id="pdf-file-input" accept=".pdf,.docx,.doc,.pptx,.ppt,.xlsx,.xls,.csv,.tsv,.json,.jsonl,.yaml,.yml,.xml,.html,.htm,.py,.js,.ts,.tsx,.jsx,.java,.cpp,.c,.go,.rs,.sql,.sh,.css,.txt,.md,.markdown,.rst,.log" class="hidden-input" title="File input">
             <div class="dropzone-body">
-              <div class="dropzone-glyph" title="PDF Document Icon">
+              <div class="dropzone-glyph" title="Universal Document Icon">
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                   <polyline points="14 2 14 8 20 8"></polyline>
@@ -163,29 +163,29 @@
                   <line x1="9" y1="15" x2="15" y2="15"></line>
                 </svg>
               </div>
-              <p class="dropzone-text"><strong>Drop your PDF here to start</strong></p>
-              <p class="dropzone-sub">or <button type="button" id="browse-btn" class="link-btn" title="Click to browse your computer for a PDF file">choose a file</button></p>
+              <p class="dropzone-text"><strong>Drop any file or document here to start</strong></p>
+              <p class="dropzone-sub">PDF, Word, Slides, Excel, CSV, JSON, Code, & Text &bull; <button type="button" id="browse-btn" class="link-btn" title="Click to browse your computer">choose file</button></p>
             </div>
           </div>
 
           <!-- Ingestion Progress Loader -->
-          <div id="ingest-loader" class="ingest-loader hidden" title="Processing PDF document">
+          <div id="ingest-loader" class="ingest-loader hidden" title="Processing document">
             <div class="loader-bar"><div class="loader-bar-progress"></div></div>
-            <p id="ingest-loader-text" class="loader-caption">Parsing pages and indexing document content...</p>
+            <p id="ingest-loader-text" class="loader-caption">Parsing and indexing document content...</p>
           </div>
 
           <!-- Document Meta Strip -->
           <div id="doc-meta-strip" class="doc-meta-strip hidden" title="Active document metadata summary">
-            <div class="meta-pill" title="Name of the currently indexed PDF document">
+            <div class="meta-pill" title="Name of the currently indexed document">
               <span class="meta-label">File:</span>
               <span id="meta-filename" class="meta-value">document.pdf</span>
             </div>
-            <div class="meta-pill" title="Total pages extracted from this PDF">
-              <span class="meta-label">Pages:</span>
+            <div class="meta-pill" title="Total pages / sections extracted">
+              <span class="meta-label">Sections:</span>
               <span id="meta-pages" class="meta-value">0</span>
             </div>
-            <div class="meta-pill" title="Total searchable chunks created in the vector index">
-              <span class="meta-label">Sections:</span>
+            <div class="meta-pill" title="Total searchable vector chunks created">
+              <span class="meta-label">Chunks:</span>
               <span id="meta-chunks" class="meta-value">0</span>
             </div>
             <div class="meta-pill" title="Ready to answer questions with verified citations">
@@ -198,15 +198,15 @@
         <!-- Tab 1: Interactive Document Reader -->
         <div id="panel-doc-viewer" class="tab-panel active" title="Document Reader View">
           <div class="doc-reader-card">
-            <div class="reader-toolbar" title="Navigate directly between pages">
-              <span class="reader-label">Jump to Page:</span>
-              <div id="reader-page-pills" class="page-pills" title="Click a page pill to scroll directly to that page">
-                <span class="no-doc-hint">Upload a PDF to view pages</span>
+            <div class="reader-toolbar" title="Navigate directly between sections">
+              <span class="reader-label">Jump to Section:</span>
+              <div id="reader-page-pills" class="page-pills" title="Click a pill to scroll directly to that section">
+                <span class="no-doc-hint">Upload any file to view content</span>
               </div>
             </div>
-            <div id="reader-pages-container" class="reader-pages-container" title="Formatted document pages — matching passages highlight here when citations are clicked">
+            <div id="reader-pages-container" class="reader-pages-container" title="Formatted document content — matching passages highlight here when citations are clicked">
               <div class="reader-empty">
-                <p>Upload a document to view formatted pages here and see matching evidence highlighted when you ask questions.</p>
+                <p>Upload any PDF, Word doc, spreadsheet, slide deck, JSON, code, or text file to inspect sections here and see matching evidence highlighted when you chat.</p>
               </div>
             </div>
           </div>
