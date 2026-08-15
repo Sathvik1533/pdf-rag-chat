@@ -597,8 +597,13 @@ document.addEventListener('DOMContentLoaded', () => {
           composerForm.dispatchEvent(new Event('submit'));
         }
       };
-      recognition.onerror = () => {
+      recognition.onerror = (event) => {
         btnVoiceDictate.classList.remove('listening');
+        if (event.error === 'not-allowed') {
+          alert('Microphone access was denied. Please allow microphone permissions in your browser URL bar to use voice dictation.');
+        } else if (event.error === 'network') {
+          console.warn('Speech recognition service network status:', event.error);
+        }
       };
       recognition.onend = () => {
         btnVoiceDictate.classList.remove('listening');
