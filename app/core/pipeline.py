@@ -107,23 +107,8 @@ class RAGPipeline:
         self.grounding_threshold = grounding_threshold
         self.groq_model = groq_model
         self.embedding_model_name = embedding_model_name
-
-        # Memory optimization for 512MB environments (e.g. Render Free Tier)
-        import torch
-        torch.set_num_threads(1)
-        if hasattr(torch, "set_num_interop_threads"):
-            try:
-                torch.set_num_interop_threads(1)
-            except RuntimeError:
-                pass
-
-        logger.info(f"Loading embedding model: {embedding_model_name} on CPU...")
-        # Load local embedding model with explicit CPU placement
-        self.embedder = SentenceTransformer(embedding_model_name, device="cpu")
-        if hasattr(self.embedder, "get_embedding_dimension"):
-            self.embedding_dim = self.embedder.get_embedding_dimension()
-        else:
-            self.embedding_dim = self.embedder.get_sentence_embedding_dimension()
+        self.embedding_dim = 384  # standard for all-MiniLM-L6-v2
+        self._embedder = None
 
         # In-memory document storage state (scoped to the uploaded document)
         # WHY IN-MEMORY FAISS: Single-document Q&A does not require a persistent database cluster
@@ -135,6 +120,25 @@ class RAGPipeline:
         self.total_pages: int = 0
         self.document_size_bytes: int = 0
         self.last_indexing_time_ms: float = 0.0
+
+    @property
+    def embedder(self):
+        """Lazy-load the embedding model on first use so server boots instantly with 0 memory spike."""
+        if self._embedder is None:
+            import torch
+            torch.set_num_threads(1)
+            if hasattr(torch, "set_num_interop_threads"):
+                try:
+                    torch.set_num_interop_threads(1)
+                except RuntimeError:
+                    pass
+            logger.info(f"Loading embedding model: {self.embedding_model_name} on CPU...")
+            self._embedder = SentenceTransformer(self.embedding_model_name, device="cpu")
+            if hasattr(self._embedder, "get_embedding_dimension"):
+                self.embedding_dim = self._embedder.get_embedding_dimension()
+            else:
+                self.embedding_dim = self._embedder.get_sentence_embedding_dimension()
+        return self._embedder
 
     # -------------------------------------------------------------------------
     # STAGE 1: EXTRACT
