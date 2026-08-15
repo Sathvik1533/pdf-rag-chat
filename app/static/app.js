@@ -187,14 +187,28 @@ document.addEventListener('DOMContentLoaded', () => {
         body: formData,
       });
 
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.detail || 'Upload failed');
+      const responseText = await response.text();
+      let data = {};
+      try {
+        data = responseText ? JSON.parse(responseText) : {};
+      } catch (parseErr) {
+        data = { detail: `Server returned status ${response.status} (${response.statusText}).` };
+      }
+
+      if (!response.ok) {
+        throw new Error(data.detail || `Upload failed with status ${response.status}`);
+      }
 
       // Fetch Full Document Data
       const dossierRes = await fetch('/document/dossier');
       if (dossierRes.ok) {
-        currentDossier = await dossierRes.json();
-        renderDocumentDossier(currentDossier);
+        try {
+          const dossierText = await dossierRes.text();
+          currentDossier = dossierText ? JSON.parse(dossierText) : null;
+          if (currentDossier) renderDocumentDossier(currentDossier);
+        } catch (e) {
+          console.warn('Could not parse dossier', e);
+        }
       }
 
       // Update Meta Strip
@@ -221,7 +235,7 @@ document.addEventListener('DOMContentLoaded', () => {
       console.error(err);
       ingestLoader.classList.add('hidden');
       dropzone.classList.remove('hidden');
-      alert(`Could not open document: ${err.message}`);
+      appendNotice(`⚠️ **Upload Notice:** ${err.message}`);
     }
   }
 
@@ -381,7 +395,14 @@ document.addEventListener('DOMContentLoaded', () => {
         body: JSON.stringify(payload),
       });
 
-      const data = await response.json();
+      const responseText = await response.text();
+      let data = {};
+      try {
+        data = responseText ? JSON.parse(responseText) : {};
+      } catch (parseErr) {
+        data = { detail: `Server returned status ${response.status} (${response.statusText}).` };
+      }
+
       removeLoadingBubble(loaderId);
 
       if (!response.ok) {

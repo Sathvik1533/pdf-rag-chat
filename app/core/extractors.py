@@ -58,7 +58,10 @@ def extract_pdf(file_bytes: bytes, filename: str) -> List[ExtractedUnit]:
 
 
 def extract_docx(file_bytes: bytes, filename: str) -> List[ExtractedUnit]:
-    """Extract text from Word .docx document, grouped into logical sections."""
+    """
+    Extract text from Word .docx document.
+    Falls back to binary .doc extraction if it is an older Word 97-2004 binary format.
+    """
     try:
         import docx
         doc = docx.Document(io.BytesIO(file_bytes))
@@ -95,10 +98,81 @@ def extract_docx(file_bytes: bytes, filename: str) -> List[ExtractedUnit]:
                 text="\n\n".join(current_section)
             ))
             
-        return units
+        if units:
+            return units
+            
     except Exception as e:
-        logger.warning(f"docx library error on {filename}: {e}. Falling back to text extraction.")
+        logger.info(f"docx XML parser bypassed for {filename}: {e}. Trying binary .doc extractor.")
+        
+    return extract_binary_doc(file_bytes, filename)
+
+
+def extract_binary_doc(file_bytes: bytes, filename: str) -> List[ExtractedUnit]:
+    """
+    Extract readable human text from binary Word 97-2004 (.doc), RTF, or raw binary containers.
+    Extracts UTF-16LE (both even and odd alignments) and ASCII text streams while filtering out OLE metadata noise.
+    """
+    import re
+    
+    extracted_passages = []
+
+    # 1. Try extracting UTF-16LE strings (checking both even and odd byte alignments)
+    for offset in [0, 1]:
+        try:
+            utf16_text = file_bytes[offset:].decode("utf-16le", errors="ignore")
+            utf16_matches = re.findall(r'[A-Za-z0-9][A-Za-z0-9\s,.;:\'"\-()?!/@#%&*+=]{10,}', utf16_text)
+            for match in utf16_matches:
+                cleaned = " ".join(match.split()).strip()
+                # Filter out OLE internal table signatures
+                if len(cleaned) > 15 and not any(meta in cleaned for meta in ["WordDocument", "SummaryInformation", "CompObj", "Root Entry"]):
+                    if cleaned not in extracted_passages:
+                        extracted_passages.append(cleaned)
+        except Exception:
+            pass
+
+    # 2. Try extracting ASCII / UTF-8 strings
+    try:
+        ascii_text = file_bytes.decode("utf-8", errors="ignore")
+        ascii_matches = re.findall(r'[A-Za-z0-9][A-Za-z0-9\s,.;:\'"\-()?!/@#%&*+=]{10,}', ascii_text)
+        for match in ascii_matches:
+            cleaned = " ".join(match.split()).strip()
+            if len(cleaned) > 15 and not any(meta in cleaned for meta in ["WordDocument", "SummaryInformation", "CompObj", "Root Entry"]):
+                if cleaned not in extracted_passages:
+                    extracted_passages.append(cleaned)
+    except Exception:
+        pass
+
+    if not extracted_passages:
+        # Fallback to general plain text decoder
         return extract_text_fallback(file_bytes, filename)
+
+    # Group into readable sections of ~350 words
+    units: List[ExtractedUnit] = []
+    current_section = []
+    section_idx = 1
+    word_count = 0
+
+    for passage in extracted_passages:
+        current_section.append(passage)
+        word_count += len(passage.split())
+        if word_count >= 350:
+            units.append(ExtractedUnit(
+                index=section_idx,
+                label=f"Section {section_idx}",
+                text="\n\n".join(current_section)
+            ))
+            section_idx += 1
+            current_section = []
+            word_count = 0
+
+    if current_section:
+        units.append(ExtractedUnit(
+            index=section_idx,
+            label=f"Section {section_idx}",
+            text="\n\n".join(current_section)
+        ))
+
+    return units
 
 
 def extract_pptx(file_bytes: bytes, filename: str) -> List[ExtractedUnit]:

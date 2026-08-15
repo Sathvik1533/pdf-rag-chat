@@ -104,3 +104,16 @@ def test_universal_pipeline_indexing_with_csv():
     assert len(retrieved) > 0
     top_chunk, score = retrieved[0]
     assert "Dr. Sophia Chen" in top_chunk.text
+
+
+def test_binary_doc_extraction():
+    """Verify legacy binary .doc containers (or files with binary headers) are extracted safely."""
+    # Simulate a binary Word 97-2004 document stream containing UTF-16LE text and OLE headers
+    fake_ole_header = b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1Root Entry\x00\x00WordDocument\x00"
+    content_utf16 = "This is a confidential knowledge transfer document outlining the deployment steps for Veritas API.".encode("utf-16le")
+    raw_doc_bytes = fake_ole_header + content_utf16 + b"\x00\x00\x00\x00"
+
+    units = extract_universal(raw_doc_bytes, "Knowledge transfer doc.doc")
+    assert len(units) >= 1
+    assert "knowledge transfer document" in units[0][2].lower()
+
