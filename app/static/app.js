@@ -162,6 +162,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  const btnChangeFile = document.getElementById('btn-change-file');
+  if (btnChangeFile) {
+    btnChangeFile.addEventListener('click', () => {
+      fileInput.click();
+    });
+  }
+
   // Try Sample Document
   loadSampleBtn.addEventListener('click', async () => {
     try {
@@ -238,7 +245,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
       ingestLoader.classList.add('hidden');
       docMetaStrip.classList.remove('hidden');
-      dropzone.classList.remove('hidden');
+      dropzone.classList.add('hidden'); // Ensure dropzone stays hidden!
 
       // Unlock Composer
       composerInput.disabled = false;
@@ -256,7 +263,11 @@ document.addEventListener('DOMContentLoaded', () => {
     } catch (err) {
       console.error(err);
       ingestLoader.classList.add('hidden');
-      dropzone.classList.remove('hidden');
+      if (!currentDossier) {
+        dropzone.classList.remove('hidden');
+      } else {
+        docMetaStrip.classList.remove('hidden');
+      }
       appendNotice(`⚠️ **Upload Notice:** ${err.message}`);
     }
   }

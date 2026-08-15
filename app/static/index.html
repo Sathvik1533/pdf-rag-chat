@@ -241,28 +241,38 @@
             <p id="ingest-loader-text" class="loader-caption">Parsing and indexing document content...</p>
           </div>
 
-          <!-- Document Meta Strip -->
-          <div id="doc-meta-strip" class="doc-meta-strip hidden" title="Active document metadata summary">
-            <div class="meta-pill" title="Name of the currently indexed document">
-              <span class="meta-label">File:</span>
-              <span id="meta-filename" class="meta-value">document.pdf</span>
+          <!-- Active Document Header Card (Shown after upload, replacing dropzone) -->
+          <div id="doc-meta-strip" class="doc-meta-strip hidden" title="Active Document Summary">
+            <div class="active-doc-left">
+              <div class="active-doc-icon">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="16" y1="13" x2="8" y2="13"></line>
+                  <line x1="16" y1="17" x2="8" y2="17"></line>
+                  <polyline points="10 9 9 9 8 9"></polyline>
+                </svg>
+              </div>
+              <div class="active-doc-details">
+                <div class="active-doc-headline">
+                  <span id="meta-filename" class="meta-filename" title="Indexed document filename">document.pdf</span>
+                  <span class="badge-status-ready">Active</span>
+                </div>
+                <div class="active-doc-subline">
+                  <span id="meta-pages">0 sections</span> &bull; 
+                  <span id="meta-chunks">0 chunks</span> &bull; 
+                  <span id="meta-readtime">~1 min read</span>
+                </div>
+              </div>
             </div>
-            <div class="meta-pill" title="Total pages / sections extracted">
-              <span class="meta-label">Sections:</span>
-              <span id="meta-pages" class="meta-value">0</span>
-            </div>
-            <div class="meta-pill" title="Total searchable vector chunks created">
-              <span class="meta-label">Chunks:</span>
-              <span id="meta-chunks" class="meta-value">0</span>
-            </div>
-            <div class="meta-pill" title="Estimated reading time">
-              <span class="meta-label">Read Time:</span>
-              <span id="meta-readtime" class="meta-value">~1 min</span>
-            </div>
-            <div class="meta-pill" title="Ready to answer questions with verified citations">
-              <span class="meta-label">Status:</span>
-              <span class="meta-value text-emerald">Ready to search</span>
-            </div>
+            <button type="button" id="btn-change-file" class="btn-change-file" title="Upload a different document">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+              <span>Replace File</span>
+            </button>
           </div>
         </div>
 

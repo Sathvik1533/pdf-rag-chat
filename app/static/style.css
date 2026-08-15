@@ -542,27 +542,101 @@ body {
   text-align: center;
 }
 
-/* Doc Meta Strip */
+/* Active Document Header Card */
 .doc-meta-strip {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.4rem;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  padding: 0.65rem 0.85rem;
+  box-shadow: var(--shadow-sm);
+  animation: fadeIn 0.2s ease-out;
 }
 
-.meta-pill {
+.active-doc-left {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  min-width: 0;
+  flex: 1;
+}
+
+.active-doc-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--r-sm);
+  background: var(--brand-subtle);
+  color: var(--brand);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.active-doc-details {
+  min-width: 0;
+  flex: 1;
+}
+
+.active-doc-headline {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.meta-filename {
+  font-weight: 700;
+  font-size: 0.82rem;
+  color: var(--text-main);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 170px;
+}
+
+.badge-status-ready {
+  font-size: 0.62rem;
+  font-weight: 700;
+  padding: 0.1rem 0.4rem;
+  border-radius: 9999px;
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.active-doc-subline {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  margin-top: 0.1rem;
+}
+
+.btn-change-file {
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
+  gap: 0.35rem;
   background: var(--bg-card-subtle);
   border: 1px solid var(--border-subtle);
-  border-radius: 4px;
-  padding: 0.18rem 0.5rem;
-  font-size: 0.7rem;
+  color: var(--text-main);
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.35rem 0.65rem;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
 }
 
-.meta-label { color: var(--text-muted); font-weight: 600; }
-.meta-value { font-weight: 600; color: var(--text-main); }
-.text-emerald { color: var(--emerald-text); }
+.btn-change-file:hover {
+  background: var(--bg-body);
+  border-color: var(--brand);
+  color: var(--brand);
+}
 
 /* Tab Panels */
 .tab-panel {
