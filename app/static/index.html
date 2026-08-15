@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Veritas — Document Intelligence & Grounded RAG</title>
-  <meta name="description" content="Verifiable Document RAG powered by FAISS, sentence-transformers, and Groq Llama 3.3 70B with deterministic code-level grounding.">
+  <meta name="description" content="Production-grade Document RAG with live interactive document viewer, code-level grounding verification, and page citations.">
   
   <!-- Bespoke Typography: Plus Jakarta Sans (UI), Newsreader (Editorial Serif), Geist Mono (Technical Precision) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -25,27 +25,27 @@
           <span class="brand-mark">V</span>
           <div class="brand-titles">
             <span class="brand-name">VERITAS</span>
-            <span class="brand-tag">Grounded Document RAG</span>
+            <span class="brand-tag">Document Intelligence & Grounded RAG</span>
           </div>
         </div>
 
         <div class="telemetry-pills">
           <div class="pill pill-mono" title="Local sentence embedding model">
             <span class="pill-dot pill-dot-blue"></span>
-            <span>all-MiniLM-L6-v2</span>
+            <span>all-MiniLM-L6-v2 (384-D)</span>
           </div>
           <div class="pill pill-mono" title="Inference model">
             <span class="pill-dot pill-dot-emerald"></span>
-            <span>Llama 3.3 70B</span>
+            <span>Llama 3.3 70B @ Groq</span>
           </div>
           <div class="pill pill-mono" title="Code-level similarity floor">
-            <span>Threshold: <strong id="telemetry-threshold">0.35</strong></span>
+            <span>Refusal Floor: <strong id="telemetry-threshold">0.35</strong></span>
           </div>
         </div>
       </div>
 
       <div class="nav-right">
-        <button id="load-sample-btn" class="btn btn-secondary btn-sm" title="Load sample multi-page document for quick testing">
+        <button id="load-sample-btn" class="btn btn-secondary btn-sm" title="Load sample multi-page specification for instant testing">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
             <polyline points="14 2 14 8 20 8"></polyline>
@@ -53,6 +53,15 @@
             <line x1="9" y1="15" x2="15" y2="15"></line>
           </svg>
           <span>Load Sample Doc</span>
+        </button>
+
+        <button id="export-audit-btn" class="btn btn-ghost btn-sm" title="Export session verification report (JSON)">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+            <polyline points="7 10 12 15 17 10"></polyline>
+            <line x1="12" y1="15" x2="12" y2="3"></line>
+          </svg>
+          <span>Export Audit</span>
         </button>
 
         <button id="toggle-config-btn" class="btn btn-ghost btn-icon" title="Engine Settings" aria-label="Configure Engine">
@@ -68,7 +77,7 @@
     <div id="config-drawer" class="config-drawer hidden">
       <div class="drawer-inner">
         <div class="drawer-header">
-          <h3>Engine Hyperparameters</h3>
+          <h3>Engine Hyperparameters & Telemetry</h3>
           <button id="close-config-btn" class="btn-close">&times;</button>
         </div>
         <div class="drawer-body">
@@ -93,8 +102,12 @@
               <span class="spec-val">RecursiveCharacter (500 tokens / 50 overlap)</span>
             </div>
             <div class="spec-row">
+              <span class="spec-label">Vector Store</span>
+              <span class="spec-val">FAISS In-Memory (IndexFlatIP)</span>
+            </div>
+            <div class="spec-row">
               <span class="spec-label">Vector Metric</span>
-              <span class="spec-val">Inner Product on Unit Normals (Cosine)</span>
+              <span class="spec-val">Cosine Similarity (Unit Normalized)</span>
             </div>
             <div class="spec-row">
               <span class="spec-label">Top-K Retrieval</span>
@@ -108,30 +121,53 @@
     <!-- Main Workspace Layout -->
     <main class="veritas-workbench">
       
-      <!-- Left Column: Document & Evidence Desk -->
+      <!-- Left Column: Document Lens & Evidence Desk -->
       <aside class="workbench-sidebar">
         
-        <!-- Document Ingestion Card -->
+        <!-- Document Ingestion & Summary Header -->
         <div class="dossier-card">
           <div class="dossier-header">
-            <span class="section-label">Source Document</span>
-            <span id="dossier-status" class="status-indicator status-waiting">Waiting</span>
+            <div class="dossier-tabs">
+              <button id="tab-doc-view" class="tab-btn active" data-tab="doc-viewer">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                </svg>
+                <span>Document Reader</span>
+              </button>
+              <button id="tab-vector-view" class="tab-btn" data-tab="vector-map">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+                  <polyline points="2 17 12 22 22 17"></polyline>
+                  <polyline points="2 12 12 17 22 12"></polyline>
+                </svg>
+                <span>Vector Map</span>
+              </button>
+              <button id="tab-diag-view" class="tab-btn" data-tab="diagnostics">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="18" y1="20" x2="18" y2="10"></line>
+                  <line x1="12" y1="20" x2="12" y2="4"></line>
+                  <line x1="6" y1="20" x2="6" y2="14"></line>
+                </svg>
+                <span>Telemetry</span>
+              </button>
+            </div>
           </div>
 
-          <!-- Dropzone -->
+          <!-- Document Upload Dropzone -->
           <div id="dropzone" class="dropzone">
             <input type="file" id="pdf-file-input" accept=".pdf" class="hidden-input">
             <div class="dropzone-body">
               <div class="dropzone-glyph">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                   <polyline points="14 2 14 8 20 8"></polyline>
                   <line x1="12" y1="18" x2="12" y2="12"></line>
                   <line x1="9" y1="15" x2="15" y2="15"></line>
                 </svg>
               </div>
-              <p class="dropzone-text"><strong>Upload PDF Document</strong></p>
-              <p class="dropzone-sub">Drop file here or <button type="button" id="browse-btn" class="link-btn">browse</button></p>
+              <p class="dropzone-text"><strong>Drop PDF Document to Parse</strong></p>
+              <p class="dropzone-sub">or <button type="button" id="browse-btn" class="link-btn">browse files</button></p>
             </div>
           </div>
 
@@ -141,54 +177,102 @@
             <p id="ingest-loader-text" class="loader-caption">Parsing pages and computing dense embeddings...</p>
           </div>
 
-          <!-- Loaded Document Metadata -->
-          <div id="loaded-dossier" class="loaded-dossier hidden">
-            <div class="doc-meta-row">
-              <div class="doc-file-info">
-                <span class="doc-badge-pdf">PDF</span>
-                <span id="meta-filename" class="doc-name" title="Document filename">document.pdf</span>
+          <!-- Document Meta Strip -->
+          <div id="doc-meta-strip" class="doc-meta-strip hidden">
+            <div class="meta-pill">
+              <span class="meta-label">File:</span>
+              <span id="meta-filename" class="meta-value">document.pdf</span>
+            </div>
+            <div class="meta-pill">
+              <span class="meta-label">Pages:</span>
+              <span id="meta-pages" class="meta-value">0</span>
+            </div>
+            <div class="meta-pill">
+              <span class="meta-label">Chunks:</span>
+              <span id="meta-chunks" class="meta-value">0</span>
+            </div>
+            <div class="meta-pill">
+              <span class="meta-label">Latency:</span>
+              <span id="meta-indexing-time" class="meta-value text-emerald">0ms</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 1: Interactive Document Reader -->
+        <div id="panel-doc-viewer" class="tab-panel active">
+          <div class="doc-reader-card">
+            <div class="reader-toolbar">
+              <span class="reader-label">Page Navigation:</span>
+              <div id="reader-page-pills" class="page-pills">
+                <span class="no-doc-hint">No document loaded yet</span>
               </div>
             </div>
-
-            <div class="stats-grid">
-              <div class="stat-box">
-                <span class="stat-num" id="meta-pages">0</span>
-                <span class="stat-tag">Pages</span>
-              </div>
-              <div class="stat-box">
-                <span class="stat-num" id="meta-chunks">0</span>
-                <span class="stat-tag">FAISS Chunks</span>
-              </div>
-              <div class="stat-box">
-                <span class="stat-num text-emerald">384-D</span>
-                <span class="stat-tag">Vector Dim</span>
+            <div id="reader-pages-container" class="reader-pages-container">
+              <div class="reader-empty">
+                <p>Upload a document to view full page content with interactive citation highlights.</p>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Grounding Diagnostics Spectrum Card -->
-        <div class="spectrum-card">
-          <div class="spectrum-header">
-            <span class="section-label">Grounding Architecture</span>
-          </div>
-          <div class="spectrum-visual">
-            <div class="spectrum-bar">
-              <div class="spectrum-zone zone-refusal" style="width: 35%;">
-                <span class="zone-tag">Refusal (Ungrounded)</span>
-              </div>
-              <div class="spectrum-zone zone-grounded" style="width: 65%;">
-                <span class="zone-tag">LLM Synthesis (Grounded)</span>
-              </div>
+        <!-- Tab 2: FAISS Vector Knowledge Map -->
+        <div id="panel-vector-map" class="tab-panel">
+          <div class="vector-map-card">
+            <div class="vector-map-header">
+              <span class="section-label">FAISS Chunk Knowledge Map</span>
+              <span id="vector-map-count" class="badge-mono">0 Chunks</span>
             </div>
-            <div class="threshold-marker" style="left: 35%;">
-              <span class="marker-line"></span>
-              <span class="marker-text">Floor (0.35)</span>
+            <div id="chunks-list" class="chunks-list">
+              <p class="no-doc-hint">No vectors indexed yet.</p>
             </div>
           </div>
-          <p class="spectrum-note">
-            If top retrieval similarity is &lt; 0.35, the LLM is skipped in code to prevent hallucinated guesses.
-          </p>
+        </div>
+
+        <!-- Tab 3: Grounding Diagnostics & Spectrum -->
+        <div id="panel-diagnostics" class="tab-panel">
+          <div class="spectrum-card">
+            <div class="spectrum-header">
+              <span class="section-label">Grounding Confidence Radar</span>
+            </div>
+            
+            <div class="spectrum-visual">
+              <div class="spectrum-bar">
+                <div class="spectrum-zone zone-refusal" style="width: 35%;">
+                  <span class="zone-tag">Refusal</span>
+                </div>
+                <div class="spectrum-zone zone-grounded" style="width: 65%;">
+                  <span class="zone-tag">Grounded</span>
+                </div>
+              </div>
+              <div class="threshold-marker" style="left: 35%;">
+                <span class="marker-line"></span>
+                <span class="marker-text">Floor (0.35)</span>
+              </div>
+            </div>
+
+            <div id="latest-query-radar" class="latest-radar-box">
+              <div class="radar-row">
+                <span class="radar-lbl">Latest Query Status:</span>
+                <span id="radar-status" class="badge-subtle">Idle</span>
+              </div>
+              <div class="radar-row">
+                <span class="radar-lbl">Max Retrieval Similarity:</span>
+                <span id="radar-score" class="font-mono">--</span>
+              </div>
+              <div class="radar-row">
+                <span class="radar-lbl">Retrieval Latency:</span>
+                <span id="radar-ret-latency" class="font-mono">--</span>
+              </div>
+              <div class="radar-row">
+                <span class="radar-lbl">LLM Generation Latency:</span>
+                <span id="radar-gen-latency" class="font-mono">--</span>
+              </div>
+            </div>
+
+            <p class="spectrum-note">
+              Deterministic code-level rule: if top retrieval score &lt; 0.35, the LLM call is aborted in Python, guaranteeing 0% hallucination on out-of-scope queries.
+            </p>
+          </div>
         </div>
 
       </aside>
@@ -203,7 +287,7 @@
             <!-- Empty State / Welcome -->
             <div id="empty-state" class="empty-state">
               <div class="empty-dossier-icon">
-                <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                   <polyline points="14 2 14 8 20 8"></polyline>
                   <line x1="16" y1="13" x2="8" y2="13"></line>
@@ -213,7 +297,7 @@
               </div>
               <h2 class="empty-title">Verifiable Document Intelligence</h2>
               <p class="empty-subtitle">
-                Upload any research paper, policy, financial report, or specification. Ask questions to retrieve evidence-backed answers with exact page numbers. If the facts are absent, Veritas will refuse rather than fabricate.
+                Upload any PDF document on the left or click <strong>"Load Sample Doc"</strong> to explore the interactive reader. Ask any question to retrieve answers with verifiable page citations. If the document doesn't contain the answer, Veritas deterministically refuses to guess.
               </p>
             </div>
 
@@ -223,9 +307,9 @@
           <div id="starter-chips" class="starter-chips hidden">
             <span class="starter-label">Quick Prompts:</span>
             <button class="chip" data-query="What are the main objectives and findings in this document?">Objectives & Overview</button>
-            <button class="chip" data-query="What are the key financial numbers, metrics, or budgets mentioned?">Financials & Budgets</button>
-            <button class="chip" data-query="What are the specific deadlines, dates, or milestones?">Deadlines & Milestones</button>
-            <button class="chip" data-query="Explain the propulsion warp engine mechanics in the quantum multiverse.">Test Out-of-Scope Refusal ⚡</button>
+            <button class="chip" data-query="What are the key financial numbers, budgets, or capital allocations?">Budget & Numbers</button>
+            <button class="chip" data-query="What are the specific deadlines, dates, or launch milestones?">Deadlines & Milestones</button>
+            <button class="chip" data-query="How do warp drive antimatter engines navigate through gravitational wormholes?">Test Refusal (Out-of-Scope) ⚡</button>
           </div>
 
           <!-- Bottom Prompt Composer -->

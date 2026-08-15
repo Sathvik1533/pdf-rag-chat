@@ -1,6 +1,6 @@
 /* ==========================================================================
    VERITAS — Document Intelligence & Grounded RAG
-   Design System: Academic Precision & Modern Editorial Engineering
+   Design System: Academic Precision & Realistic Document Workbench
    ========================================================================== */
 
 :root {
@@ -10,6 +10,13 @@
   --bg-card-subtle: hsl(220, 18%, 95.5%);
   --bg-card-hover: hsl(220, 18%, 93%);
   --bg-overlay: rgba(15, 23, 42, 0.4);
+
+  /* Document Reader Canvas */
+  --bg-paper: hsl(40, 25%, 99%);
+  --border-paper: hsl(38, 20%, 88%);
+  --shadow-paper: 0 4px 12px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(15, 23, 42, 0.04);
+  --highlight-gold: hsla(43, 96%, 56%, 0.28);
+  --highlight-border: hsl(43, 90%, 48%);
 
   /* Border Tones */
   --border-subtle: hsl(220, 15%, 88%);
@@ -84,7 +91,7 @@ body {
 .veritas-nav {
   background: var(--bg-card);
   border-bottom: 1px solid var(--border-subtle);
-  padding: 0.75rem 1.75rem;
+  padding: 0.65rem 1.75rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -359,12 +366,12 @@ body {
 .veritas-workbench {
   flex: 1;
   overflow: hidden;
-  max-width: 1440px;
+  max-width: 1560px;
   width: 100%;
   margin: 0 auto;
-  padding: 1.25rem 1.75rem;
+  padding: 1rem 1.75rem;
   display: grid;
-  grid-template-columns: 340px 1fr;
+  grid-template-columns: 460px 1fr;
   gap: 1.5rem;
 }
 
@@ -372,56 +379,59 @@ body {
 .workbench-sidebar {
   display: flex;
   flex-direction: column;
-  gap: 1.25rem;
-  overflow-y: auto;
+  gap: 1rem;
+  overflow: hidden;
+  height: 100%;
 }
 
-.dossier-card, .spectrum-card {
+.dossier-card {
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--r-lg);
-  padding: 1.25rem;
+  border-radius: var(--r-md);
+  padding: 0.85rem;
   box-shadow: var(--shadow-subtle);
-}
-
-.dossier-header, .spectrum-header {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 1rem;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
-.section-label {
-  font-size: 0.725rem;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--text-muted);
-}
-
-.status-indicator {
-  font-size: 0.7rem;
-  font-weight: 600;
-  padding: 0.15rem 0.55rem;
-  border-radius: var(--r-full);
-}
-
-.status-waiting {
+.dossier-tabs {
+  display: flex;
+  gap: 0.35rem;
   background: var(--bg-card-subtle);
-  color: var(--text-muted);
+  padding: 0.25rem;
+  border-radius: var(--r-sm);
 }
 
-.status-active {
-  background: var(--emerald-bg);
-  color: var(--emerald-text);
-  border: 1px solid var(--emerald-border);
+.tab-btn {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  background: transparent;
+  border: none;
+  padding: 0.35rem 0.5rem;
+  font-family: var(--font-ui);
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.tab-btn.active {
+  background: var(--bg-card);
+  color: var(--primary);
+  box-shadow: var(--shadow-subtle);
 }
 
 /* Dropzone */
 .dropzone {
   border: 1.5px dashed var(--border-medium);
-  border-radius: var(--r-md);
-  padding: 1.5rem 1rem;
+  border-radius: var(--r-sm);
+  padding: 0.85rem 0.5rem;
   text-align: center;
   background: var(--bg-card-subtle);
   cursor: pointer;
@@ -439,19 +449,18 @@ body {
 
 .dropzone-glyph {
   color: var(--primary);
-  margin-bottom: 0.5rem;
+  margin-bottom: 0.25rem;
 }
 
 .dropzone-text {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 600;
   color: var(--text-main);
 }
 
 .dropzone-sub {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: var(--text-muted);
-  margin-top: 0.25rem;
 }
 
 .link-btn {
@@ -465,10 +474,9 @@ body {
 
 /* Ingestion Loader */
 .ingest-loader {
-  margin-top: 1rem;
-  padding: 1rem;
+  padding: 0.75rem;
   background: var(--primary-tint);
-  border-radius: var(--r-md);
+  border-radius: var(--r-sm);
   border: 1px solid var(--primary-border);
 }
 
@@ -494,94 +502,243 @@ body {
 }
 
 .loader-caption {
-  font-size: 0.75rem;
+  font-size: 0.725rem;
   color: var(--primary-hover);
   font-weight: 600;
-  margin-top: 0.5rem;
+  margin-top: 0.35rem;
   text-align: center;
 }
 
-/* Loaded Dossier View */
-.loaded-dossier {
-  margin-top: 0.75rem;
+/* Doc Meta Strip */
+.doc-meta-strip {
   display: flex;
-  flex-direction: column;
-  gap: 0.75rem;
+  flex-wrap: wrap;
+  gap: 0.4rem;
 }
 
-.doc-meta-row {
+.meta-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: var(--bg-card-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  padding: 0.15rem 0.45rem;
+  font-size: 0.7rem;
+}
+
+.meta-label { color: var(--text-muted); font-weight: 600; }
+.meta-value { font-family: var(--font-mono); font-weight: 600; color: var(--text-main); }
+.text-emerald { color: var(--emerald-text); }
+
+/* Tab Panels */
+.tab-panel {
+  display: none;
+  flex: 1;
+  overflow: hidden;
+}
+
+.tab-panel.active {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Tab 1: Document Reader (Authentic Paper Sheets) */
+.doc-reader-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  box-shadow: var(--shadow-subtle);
+}
+
+.reader-toolbar {
+  padding: 0.65rem 0.85rem;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
-.doc-file-info {
+.reader-label {
+  font-size: 0.725rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.page-pills {
   display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  overflow: hidden;
+  gap: 0.35rem;
 }
 
-.doc-badge-pdf {
-  background: hsl(0, 75%, 94%);
-  color: hsl(0, 75%, 40%);
-  font-size: 0.65rem;
-  font-weight: 800;
-  padding: 0.15rem 0.4rem;
-  border-radius: 4px;
-  font-family: var(--font-mono);
-}
-
-.doc-name {
-  font-size: 0.825rem;
-  font-weight: 600;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.5rem;
+.page-pill-btn {
   background: var(--bg-card-subtle);
-  padding: 0.75rem 0.5rem;
-  border-radius: var(--r-md);
   border: 1px solid var(--border-subtle);
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
 }
 
-.stat-box {
+.page-pill-btn:hover, .page-pill-btn.active {
+  background: var(--primary);
+  color: #ffffff;
+  border-color: var(--primary);
+}
+
+.reader-pages-container {
+  flex: 1;
+  overflow-y: auto;
+  padding: 1rem;
+  background: var(--bg-app);
   display: flex;
   flex-direction: column;
-  align-items: center;
+  gap: 1.25rem;
 }
 
-.stat-num {
+.reader-empty {
+  margin: auto;
+  text-align: center;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  max-width: 260px;
+}
+
+/* Individual Paper Sheet */
+.paper-sheet {
+  background: var(--bg-paper);
+  border: 1px solid var(--border-paper);
+  border-radius: var(--r-sm);
+  padding: 1.25rem 1.5rem;
+  box-shadow: var(--shadow-paper);
+  position: relative;
+  transition: all 0.25s ease;
+}
+
+.paper-sheet-header {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--border-paper);
+  padding-bottom: 0.4rem;
+  margin-bottom: 0.75rem;
   font-family: var(--font-mono);
-  font-size: 0.95rem;
-  font-weight: 700;
-  color: var(--text-main);
-}
-
-.text-emerald { color: var(--emerald-text); }
-
-.stat-tag {
   font-size: 0.65rem;
   color: var(--text-muted);
   text-transform: uppercase;
-  letter-spacing: 0.02em;
-  font-weight: 600;
 }
 
-/* Spectrum Diagnostics Card */
+.paper-text-body {
+  font-family: var(--font-editorial);
+  font-size: 0.925rem;
+  line-height: 1.7;
+  color: var(--text-main);
+  white-space: pre-wrap;
+}
+
+/* Highlighted Passages when Citation is clicked */
+.passage-highlight {
+  background: var(--highlight-gold);
+  border-bottom: 2px solid var(--highlight-border);
+  padding: 0.1rem 0.25rem;
+  border-radius: 2px;
+  animation: pulseGold 2s ease-in-out infinite;
+}
+
+@keyframes pulseGold {
+  0%, 100% { background: var(--highlight-gold); }
+  50% { background: hsla(43, 96%, 56%, 0.55); }
+}
+
+/* Tab 2: Vector Map */
+.vector-map-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0.85rem;
+  box-shadow: var(--shadow-subtle);
+}
+
+.vector-map-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.chunks-list {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.chunk-item-card {
+  background: var(--bg-card-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-sm);
+  padding: 0.6rem 0.75rem;
+  font-size: 0.75rem;
+}
+
+.chunk-item-meta {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  color: var(--primary);
+  font-weight: 600;
+  margin-bottom: 0.3rem;
+}
+
+.chunk-item-body {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+/* Tab 3: Diagnostics */
+.spectrum-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  padding: 1rem;
+  box-shadow: var(--shadow-subtle);
+}
+
+.section-label {
+  font-size: 0.725rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
 .spectrum-visual {
   position: relative;
-  margin: 1rem 0 0.75rem;
+  margin: 1.25rem 0 1.5rem;
 }
 
 .spectrum-bar {
   display: flex;
-  height: 14px;
+  height: 16px;
   border-radius: var(--r-full);
   overflow: hidden;
   border: 1px solid var(--border-subtle);
@@ -608,8 +765,12 @@ body {
 }
 
 .zone-tag {
-  display: none;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
 }
+.zone-refusal .zone-tag { color: var(--refusal-text); }
+.zone-grounded .zone-tag { color: var(--emerald-text); }
 
 .threshold-marker {
   position: absolute;
@@ -622,7 +783,7 @@ body {
 
 .marker-line {
   width: 2px;
-  height: 30px;
+  height: 32px;
   background: var(--text-main);
 }
 
@@ -635,18 +796,38 @@ body {
   white-space: nowrap;
 }
 
+.latest-radar-box {
+  background: var(--bg-card-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-sm);
+  padding: 0.75rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.radar-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.75rem;
+}
+
+.radar-lbl { color: var(--text-secondary); font-weight: 500; }
+.font-mono { font-family: var(--font-mono); font-weight: 600; }
+
 .spectrum-note {
   font-size: 0.725rem;
   color: var(--text-secondary);
   line-height: 1.45;
-  margin-top: 1.25rem;
 }
 
 /* Right Column: Q&A Stream */
 .workbench-main {
   background: var(--bg-card);
   border: 1px solid var(--border-subtle);
-  border-radius: var(--r-lg);
+  border-radius: var(--r-md);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -709,7 +890,7 @@ body {
 
 .msg-assistant {
   align-self: flex-start;
-  max-width: 92%;
+  max-width: 94%;
 }
 
 .msg-sender-tag {
@@ -724,23 +905,24 @@ body {
 }
 
 .msg-bubble {
-  padding: 1rem 1.25rem;
-  border-radius: var(--r-lg);
+  padding: 1.1rem 1.35rem;
+  border-radius: var(--r-md);
   font-size: 0.9rem;
   line-height: 1.65;
+  position: relative;
 }
 
 .msg-user .msg-bubble {
   background: var(--text-main);
   color: #ffffff;
-  border-bottom-right-radius: 4px;
+  border-bottom-right-radius: 2px;
 }
 
 .msg-assistant .msg-bubble {
   background: var(--bg-card-subtle);
   border: 1px solid var(--border-subtle);
   color: var(--text-main);
-  border-bottom-left-radius: 4px;
+  border-bottom-left-radius: 2px;
 }
 
 /* Assistant Markdown Styling */
@@ -815,7 +997,7 @@ body {
   margin-bottom: 0.5rem;
   display: flex;
   align-items: center;
-  gap: 0.35rem;
+  justify-content: space-between;
 }
 
 .evidence-cards {
@@ -829,14 +1011,16 @@ body {
   border: 1px solid var(--border-subtle);
   border-left: 3px solid var(--primary);
   border-radius: var(--r-sm);
-  padding: 0.6rem 0.85rem;
+  padding: 0.65rem 0.85rem;
   font-size: 0.775rem;
-  transition: transform 0.1s ease, box-shadow 0.1s ease;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+  cursor: pointer;
 }
 
 .evidence-card:hover {
-  transform: translateX(2px);
+  transform: translateX(3px);
   box-shadow: var(--shadow-subtle);
+  border-left-color: hsl(43, 90%, 48%);
 }
 
 .evidence-top {
@@ -855,6 +1039,41 @@ body {
   color: var(--text-secondary);
   font-style: italic;
   line-height: 1.4;
+}
+
+.jump-btn-tag {
+  font-family: var(--font-ui);
+  font-size: 0.65rem;
+  color: var(--primary);
+  text-decoration: underline;
+  margin-top: 0.35rem;
+  display: inline-block;
+}
+
+/* Bubble Actions (Copy) */
+.bubble-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 0.5rem;
+}
+
+.copy-btn {
+  background: transparent;
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  padding: 0.2rem 0.5rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  transition: all 0.15s ease;
+}
+
+.copy-btn:hover {
+  background: var(--bg-card);
+  color: var(--text-main);
 }
 
 /* Starter Prompt Chips */
@@ -983,7 +1202,7 @@ body {
 }
 
 /* Responsive Breakpoints */
-@media (max-width: 920px) {
+@media (max-width: 1040px) {
   .veritas-workbench {
     grid-template-columns: 1fr;
     height: auto;
@@ -992,6 +1211,9 @@ body {
   .veritas-app {
     height: auto;
     overflow: visible;
+  }
+  .workbench-sidebar {
+    height: 520px;
   }
   .telemetry-pills {
     display: none;

@@ -84,6 +84,9 @@ class ChatResponse(BaseModel):
     threshold: float
     citations: List[CitationItem]
     document_name: Optional[str]
+    retrieval_time_ms: float = 0.0
+    generation_time_ms: float = 0.0
+    chunk_breakdown: List[dict] = Field(default_factory=list)
 
 
 class StatusResponse(BaseModel):
@@ -91,6 +94,8 @@ class StatusResponse(BaseModel):
     document_name: Optional[str]
     total_pages: int
     total_chunks: int
+    document_size_bytes: int = 0
+    indexing_time_ms: float = 0.0
     has_groq_api_key: bool
     groq_model: str
     grounding_threshold: float
@@ -115,10 +120,18 @@ async def get_system_status():
         document_name=pipeline.current_filename,
         total_pages=pipeline.total_pages,
         total_chunks=len(pipeline.chunks),
+        document_size_bytes=pipeline.document_size_bytes,
+        indexing_time_ms=round(pipeline.last_indexing_time_ms, 1),
         has_groq_api_key=has_key,
         groq_model=pipeline.groq_model,
         grounding_threshold=pipeline.grounding_threshold,
     )
+
+
+@app.get("/document/dossier", tags=["RAG"])
+async def get_document_dossier():
+    """Returns the full extracted pages, text, and vector chunk mappings for the live reader."""
+    return pipeline.get_document_dossier()
 
 
 @app.get("/sample-pdf", tags=["RAG"])
@@ -202,6 +215,9 @@ async def chat_with_document(req: ChatRequest):
             threshold=query_result.threshold,
             citations=citation_items,
             document_name=pipeline.current_filename,
+            retrieval_time_ms=query_result.retrieval_time_ms,
+            generation_time_ms=query_result.generation_time_ms,
+            chunk_breakdown=query_result.chunk_breakdown,
         )
 
     except Exception as e:

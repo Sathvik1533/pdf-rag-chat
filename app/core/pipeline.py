@@ -65,6 +65,9 @@ class QueryResult:
     threshold: float
     citations: List[Citation] = field(default_factory=list)
     raw_context: Optional[str] = None
+    retrieval_time_ms: float = 0.0
+    generation_time_ms: float = 0.0
+    chunk_breakdown: List[Dict[str, Any]] = field(default_factory=list)
 
 
 class RAGPipeline:
@@ -118,8 +121,11 @@ class RAGPipeline:
         # (e.g. Pinecone/Weaviate). In-memory FAISS provides sub-millisecond retrieval with 0 infrastructure cost.
         self.index: Optional[faiss.IndexFlatIP] = None
         self.chunks: List[DocumentChunk] = []
+        self.pages_text: List[Tuple[int, str]] = []
         self.current_filename: Optional[str] = None
         self.total_pages: int = 0
+        self.document_size_bytes: int = 0
+        self.last_indexing_time_ms: float = 0.0
 
     # -------------------------------------------------------------------------
     # STAGE 1: EXTRACT
@@ -204,6 +210,9 @@ class RAGPipeline:
         simplifies exactly to Inner Product (A · B).
         Using `faiss.IndexFlatIP` on unit-normalized vectors gives exact, high-speed cosine similarity.
         """
+        import time
+        start_t = time.time()
+
         # Step 1: Extract
         pages_text = self.extract_text_from_pdf(file_bytes, filename)
         if not pages_text:
@@ -227,17 +236,60 @@ class RAGPipeline:
         index = faiss.IndexFlatIP(self.embedding_dim)
         index.add(embeddings)
 
+        elapsed_ms = (time.time() - start_t) * 1000.0
+
         # Update in-memory state
         self.index = index
         self.chunks = chunks
+        self.pages_text = pages_text
+        self.document_size_bytes = len(file_bytes)
+        self.last_indexing_time_ms = elapsed_ms
 
-        logger.info(f"Indexed document '{filename}': {self.total_pages} pages, {len(chunks)} chunks, FAISS total={index.ntotal}")
+        logger.info(f"Indexed document '{filename}': {self.total_pages} pages, {len(chunks)} chunks, FAISS total={index.ntotal} in {elapsed_ms:.1f}ms")
 
         return {
             "filename": filename,
             "total_pages": self.total_pages,
             "total_chunks": len(chunks),
+            "document_size_bytes": len(file_bytes),
+            "indexing_time_ms": round(elapsed_ms, 1),
             "status": "ready"
+        }
+
+    def get_document_dossier(self) -> Dict[str, Any]:
+        """Returns the full extracted document pages and indexed chunks for the live document reader."""
+        if self.index is None or len(self.chunks) == 0:
+            return {"indexed": False}
+
+        pages_payload = []
+        for page_num, text in self.pages_text:
+            chunks_on_page = [c.chunk_id for c in self.chunks if c.page == page_num]
+            pages_payload.append({
+                "page": page_num,
+                "text": text,
+                "char_count": len(text),
+                "chunk_ids": chunks_on_page
+            })
+
+        chunks_payload = [
+            {
+                "chunk_id": c.chunk_id,
+                "page": c.page,
+                "char_count": c.char_count,
+                "text": c.text
+            }
+            for c in self.chunks
+        ]
+
+        return {
+            "indexed": True,
+            "filename": self.current_filename,
+            "total_pages": self.total_pages,
+            "total_chunks": len(self.chunks),
+            "document_size_bytes": self.document_size_bytes,
+            "indexing_time_ms": round(self.last_indexing_time_ms, 1),
+            "pages": pages_payload,
+            "chunks": chunks_payload
         }
 
     # -------------------------------------------------------------------------
@@ -279,14 +331,9 @@ class RAGPipeline:
     ) -> QueryResult:
         """
         Execute Stage 5: Query embedding -> Retrieval -> Grounding check -> Generation.
-
-        WHY THE GROUNDING CHECK MUST LIVE IN CODE (NOT JUST IN THE PROMPT):
-        LLMs are statistical next-token predictors. When given irrelevant context and asked
-        an out-of-scope question, models will often hallucinate plausible-sounding answers
-        despite system prompts telling them to say 'I don't know'.
-        By checking the top similarity score in Python *before* calling the LLM, we mathematically
-        guarantee that ungrounded queries are rejected deterministically without relying on LLM compliance.
         """
+        import time
+        t_start = time.time()
         threshold = custom_threshold if custom_threshold is not None else self.grounding_threshold
         cleaned_question = question.strip()
         if not cleaned_question:
@@ -295,21 +342,41 @@ class RAGPipeline:
                 grounded=False,
                 top_similarity=0.0,
                 threshold=threshold,
-                citations=[]
+                citations=[],
+                retrieval_time_ms=0.0,
+                generation_time_ms=0.0,
+                chunk_breakdown=[]
             )
 
         # Retrieve top chunks
+        t_ret_start = time.time()
         retrieved_items = self.retrieve(cleaned_question, top_k=self.top_k)
+        ret_elapsed_ms = (time.time() - t_ret_start) * 1000.0
+
         if not retrieved_items:
             return QueryResult(
                 answer=GROUNDING_REFUSAL_MESSAGE,
                 grounded=False,
                 top_similarity=0.0,
                 threshold=threshold,
-                citations=[]
+                citations=[],
+                retrieval_time_ms=round(ret_elapsed_ms, 1),
+                generation_time_ms=0.0,
+                chunk_breakdown=[]
             )
 
         top_chunk, top_similarity = retrieved_items[0]
+
+        chunk_breakdown = [
+            {
+                "chunk_id": ch.chunk_id,
+                "page": ch.page,
+                "similarity": round(score, 4),
+                "passed_threshold": score >= threshold,
+                "char_count": ch.char_count
+            }
+            for ch, score in retrieved_items
+        ]
 
         # ---------------------------------------------------------------------
         # MANDATORY GROUNDING REFUSAL CHECK
@@ -326,19 +393,19 @@ class RAGPipeline:
                 grounded=False,
                 top_similarity=top_similarity,
                 threshold=threshold,
-                citations=[]
+                citations=[],
+                retrieval_time_ms=round(ret_elapsed_ms, 1),
+                generation_time_ms=0.0,
+                chunk_breakdown=chunk_breakdown
             )
 
         # Build citations for all retrieved chunks
-        # WHY CITATIONS: Human verification is paramount. Displaying page numbers and exact excerpts
-        # lets users inspect the source evidence behind the LLM's generated synthesis.
         citations: List[Citation] = []
         for chunk, sim in retrieved_items:
-            # Create a clean 1-2 line excerpt
             first_lines = chunk.text.split("\n")
             excerpt_snippet = " ".join([line.strip() for line in first_lines if line.strip()][:2])
-            if len(excerpt_snippet) > 180:
-                excerpt_snippet = excerpt_snippet[:177] + "..."
+            if len(excerpt_snippet) > 200:
+                excerpt_snippet = excerpt_snippet[:197] + "..."
 
             citations.append(Citation(
                 page=chunk.page,
@@ -356,11 +423,13 @@ class RAGPipeline:
         combined_context = "\n\n".join(context_blocks)
 
         # Generate answer with Groq LLM
+        t_gen_start = time.time()
         answer_text = self._call_groq_llm(
             question=cleaned_question,
             context=combined_context,
             api_key=groq_api_key
         )
+        gen_elapsed_ms = (time.time() - t_gen_start) * 1000.0
 
         return QueryResult(
             answer=answer_text,
@@ -368,7 +437,10 @@ class RAGPipeline:
             top_similarity=top_similarity,
             threshold=threshold,
             citations=citations,
-            raw_context=combined_context
+            raw_context=combined_context,
+            retrieval_time_ms=round(ret_elapsed_ms, 1),
+            generation_time_ms=round(gen_elapsed_ms, 1),
+            chunk_breakdown=chunk_breakdown
         )
 
     def _call_groq_llm(self, question: str, context: str, api_key: Optional[str] = None) -> str:
