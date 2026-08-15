@@ -382,7 +382,6 @@ document.addEventListener('DOMContentLoaded', () => {
   function escapeRegex(string) {
     return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   }
-  }
 
   // --------------------------------------------------------------------------
   // Render Document Reader & Sections
