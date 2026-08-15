@@ -142,7 +142,11 @@ class RAGPipeline:
                 except RuntimeError:
                     pass
             logger.info(f"Loading embedding model: {self.embedding_model_name} on CPU...")
-            self._embedder = SentenceTransformer(self.embedding_model_name, device="cpu")
+            try:
+                self._embedder = SentenceTransformer(self.embedding_model_name, device="cpu", local_files_only=True)
+            except Exception:
+                self._embedder = SentenceTransformer(self.embedding_model_name, device="cpu")
+
             if hasattr(self._embedder, "get_embedding_dimension"):
                 self.embedding_dim = self._embedder.get_embedding_dimension()
             else:
