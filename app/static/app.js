@@ -951,6 +951,10 @@ document.addEventListener('DOMContentLoaded', () => {
       bubble.appendChild(deck);
     }
 
+    // Message Actions Bar (Read Aloud + Copy)
+    const actions = document.createElement('div');
+    actions.className = 'msg-actions';
+
     // Read Aloud / Audio Synthesis Button
     const speakBtn = document.createElement('button');
     speakBtn.className = 'speak-btn';
@@ -983,6 +987,35 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         alert('Voice synthesis is not supported in this browser.');
       }
+    });
+
+    // Copy text button
+    const copyBtn = document.createElement('button');
+    copyBtn.className = 'copy-btn';
+    copyBtn.title = 'Copy response text';
+    copyBtn.innerHTML = `
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+      </svg>
+      <span>Copy</span>
+    `;
+    copyBtn.addEventListener('click', () => {
+      navigator.clipboard.writeText(data.answer).then(() => {
+        copyBtn.innerHTML = `
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+          <span>Copied!</span>
+        `;
+        setTimeout(() => {
+          copyBtn.innerHTML = `
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+            </svg>
+            <span>Copy</span>
+          `;
+        }, 2000);
+      });
     });
 
     actions.appendChild(speakBtn);
@@ -1072,13 +1105,15 @@ document.addEventListener('DOMContentLoaded', () => {
         const data = await res.json();
         if (data.indexed) {
           metaFilename.textContent = data.document_name;
-          metaPages.textContent = `${data.total_pages} pages`;
-          metaChunks.textContent = `${data.total_chunks} sections`;
+          metaPages.textContent = `${data.total_pages} sections`;
+          metaChunks.textContent = `${data.total_chunks} chunks`;
           docMetaStrip.classList.remove('hidden');
+          dropzone.classList.add('hidden'); // Guarantee dropzone is hidden on load
           composerInput.disabled = false;
           composerSend.disabled = false;
           composerInput.placeholder = `Ask any question about ${data.document_name}...`;
           starterChips.classList.remove('hidden');
+          updateSmartStarterChips(data.document_name);
 
           const dossierRes = await fetch('/document/dossier');
           if (dossierRes.ok) {
