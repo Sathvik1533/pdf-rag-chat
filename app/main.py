@@ -16,17 +16,46 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 
+from contextlib import asynccontextmanager
+import gc
+import torch
+
 from app.config import settings
 from app.core.pipeline import RAGPipeline, QueryResult, Citation, GROUNDING_REFUSAL_MESSAGE
 
 logger = logging.getLogger("rag_api")
 logging.basicConfig(level=logging.INFO)
 
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """
+    Application Lifespan: Pre-warms the SentenceTransformer embedding model on startup
+    so uploads never experience OOM or CPU spikes during request processing.
+    """
+    try:
+        torch.set_num_threads(1)
+        if hasattr(torch, "set_num_interop_threads"):
+            try:
+                torch.set_num_interop_threads(1)
+            except RuntimeError:
+                pass
+        # Pre-load embedding model during idle startup
+        _ = pipeline.embedder
+        _ = pipeline.embedder.encode(["warmup"], batch_size=1, show_progress_bar=False)
+        gc.collect()
+        logger.info("SentenceTransformer pre-warmed and ready for instant requests.")
+    except Exception as e:
+        logger.warning(f"Lifespan warmup note: {e}")
+    yield
+
+
 # Initialize FastAPI App
 app = FastAPI(
     title=settings.APP_NAME,
     version=settings.APP_VERSION,
     description="Production-grade RAG service with code-level grounding and verifiable citations.",
+    lifespan=lifespan,
 )
 
 # Enable CORS for local testing and cross-origin access

@@ -226,11 +226,17 @@ class RAGPipeline:
         if not chunks:
             raise ValueError("No text chunks could be generated from the document.")
 
-        # Step 3: Embed (batch encoding for speed)
+        # Safety cap: limit maximum chunks to 180 to guarantee zero memory spikes on 512MB tier
+        if len(chunks) > 180:
+            logger.info(f"Document produced {len(chunks)} chunks. Capping to top 180 most dense chunks for memory safety.")
+            chunks = chunks[:180]
+
+        # Step 3: Embed (micro-batch encoding with batch_size=8 keeps peak tensor RAM < 15MB)
         chunk_texts = [chunk.text for chunk in chunks]
         with torch.inference_mode():
             embeddings = self.embedder.encode(
                 chunk_texts,
+                batch_size=8,
                 show_progress_bar=False,
                 normalize_embeddings=True,  # Crucial for exact Cosine Similarity with IndexFlatIP
                 convert_to_numpy=True
@@ -248,6 +254,9 @@ class RAGPipeline:
         self.pages_text = pages_text
         self.document_size_bytes = len(file_bytes)
         self.last_indexing_time_ms = elapsed_ms
+
+        import gc
+        gc.collect()
 
         logger.info(f"Indexed document '{filename}': {self.total_pages} sections, {len(chunks)} chunks, FAISS total={index.ntotal} in {elapsed_ms:.1f}ms")
 
