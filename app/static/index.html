@@ -3,226 +3,261 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Verifiable PDF RAG Assistant</title>
-  <meta name="description" content="Production-grade RAG pipeline with code-level grounding verification, page citations, and FAISS vector retrieval.">
+  <title>Veritas — Document Intelligence & Grounded RAG</title>
+  <meta name="description" content="Verifiable Document RAG powered by FAISS, sentence-transformers, and Groq Llama 3.3 70B with deterministic code-level grounding.">
+  
+  <!-- Premium Typography: Plus Jakarta Sans (UI), Newsreader (Editorial Serif), JetBrains Mono (Technical) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/static/style.css">
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
   <!-- Markdown parser -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-  <div class="app-layout">
-    <!-- Header -->
-    <header class="app-header">
-      <div class="header-container">
-        <div class="brand">
-          <div class="brand-icon">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-              <polyline points="14 2 14 8 20 8"></polyline>
-              <line x1="16" y1="13" x2="8" y2="13"></line>
-              <line x1="16" y1="17" x2="8" y2="17"></line>
-              <polyline points="10 9 9 9 8 9"></polyline>
-            </svg>
-          </div>
-          <div class="brand-text">
-            <h1>Verifiable PDF RAG</h1>
-            <p class="subtitle">Grounded Question Answering with Verifiable Citations</p>
+
+  <div class="veritas-app">
+    <!-- Top Navigation Bar -->
+    <header class="veritas-nav">
+      <div class="nav-left">
+        <div class="nav-brand">
+          <span class="brand-mark">V</span>
+          <div class="brand-titles">
+            <span class="brand-name">VERITAS</span>
+            <span class="brand-tag">Grounded Document RAG</span>
           </div>
         </div>
 
-        <div class="header-actions">
-          <div id="system-status-badge" class="status-badge status-idle">
-            <span class="status-dot"></span>
-            <span id="status-text">No Document Loaded</span>
+        <div class="telemetry-pills">
+          <div class="pill pill-mono" title="Local sentence embedding model">
+            <span class="pill-dot pill-dot-blue"></span>
+            <span>all-MiniLM-L6-v2</span>
           </div>
-          <button id="toggle-settings-btn" class="icon-btn" title="Configuration & Settings" aria-label="Settings">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <circle cx="12" cy="12" r="3"></circle>
-              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
-            </svg>
-          </button>
+          <div class="pill pill-mono" title="Inference model">
+            <span class="pill-dot pill-dot-emerald"></span>
+            <span>Llama 3.3 70B</span>
+          </div>
+          <div class="pill pill-mono" title="Code-level similarity floor">
+            <span>Threshold: <strong id="telemetry-threshold">0.35</strong></span>
+          </div>
         </div>
+      </div>
+
+      <div class="nav-right">
+        <button id="load-sample-btn" class="btn btn-secondary btn-sm" title="Load sample multi-page document for quick testing">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="12" y1="18" x2="12" y2="12"></line>
+            <line x1="9" y1="15" x2="15" y2="15"></line>
+          </svg>
+          <span>Load Sample Doc</span>
+        </button>
+
+        <button id="toggle-config-btn" class="btn btn-ghost btn-icon" title="Engine Settings" aria-label="Configure Engine">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+        </button>
       </div>
     </header>
 
-    <!-- Settings Bar (Collapsible) -->
-    <div id="settings-panel" class="settings-panel hidden">
-      <div class="settings-content">
-        <div class="settings-grid">
-          <div class="setting-field">
-            <label for="groq-api-key-input">Groq API Key (Optional Override)</label>
-            <input type="password" id="groq-api-key-input" placeholder="gsk_... (defaults to server .env)" autocomplete="off">
+    <!-- Engine Settings Overlay Panel -->
+    <div id="config-drawer" class="config-drawer hidden">
+      <div class="drawer-inner">
+        <div class="drawer-header">
+          <h3>Engine Hyperparameters</h3>
+          <button id="close-config-btn" class="btn-close">&times;</button>
+        </div>
+        <div class="drawer-body">
+          <div class="form-group">
+            <label for="cfg-groq-key">Runtime Groq Key Override</label>
+            <input type="password" id="cfg-groq-key" placeholder="gsk_... (leave empty to use server .env)">
+            <span class="form-caption">Never stored permanently. Applied per-session.</span>
           </div>
-          <div class="setting-field">
-            <label for="threshold-input">Grounding Similarity Threshold: <span id="threshold-val">0.35</span></label>
-            <input type="range" id="threshold-input" min="0.10" max="0.80" step="0.05" value="0.35">
+
+          <div class="form-group">
+            <div class="slider-header">
+              <label for="cfg-threshold">Grounding Refusal Threshold</label>
+              <span id="cfg-threshold-val" class="badge-mono">0.35</span>
+            </div>
+            <input type="range" id="cfg-threshold" min="0.10" max="0.75" step="0.05" value="0.35">
+            <span class="form-caption">Queries with top cosine similarity below this score are automatically refused in code.</span>
           </div>
-          <div class="setting-info">
-            <p><strong>Model:</strong> <code>llama-3.3-70b-versatile</code></p>
-            <p><strong>Embeddings:</strong> <code>all-MiniLM-L6-v2</code> (384-d, local)</p>
+
+          <div class="engine-specs">
+            <div class="spec-row">
+              <span class="spec-label">Chunk Strategy</span>
+              <span class="spec-val">RecursiveCharacter (500 tokens / 50 overlap)</span>
+            </div>
+            <div class="spec-row">
+              <span class="spec-label">Vector Metric</span>
+              <span class="spec-val">Inner Product on Unit Normals (Cosine)</span>
+            </div>
+            <div class="spec-row">
+              <span class="spec-label">Top-K Retrieval</span>
+              <span class="spec-val">4 Nearest Chunks</span>
+            </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Main Container -->
-    <main class="main-content">
-      <div class="split-container">
+    <!-- Main Workspace Layout -->
+    <main class="veritas-workbench">
+      
+      <!-- Left Column: Document & Evidence Desk -->
+      <aside class="workbench-sidebar">
         
-        <!-- Left Sidebar: Document Management & Pipeline Stats -->
-        <aside class="sidebar-panel">
-          <section class="card upload-card">
-            <div class="card-header">
-              <h2>1. Upload Document</h2>
-              <span class="badge badge-subtle">PDF Only</span>
-            </div>
+        <!-- Document Ingestion Card -->
+        <div class="dossier-card">
+          <div class="dossier-header">
+            <span class="section-label">Source Document</span>
+            <span id="dossier-status" class="status-indicator status-waiting">Waiting</span>
+          </div>
 
-            <div id="dropzone" class="dropzone">
-              <input type="file" id="pdf-file-input" accept=".pdf" class="file-input-hidden">
-              <div class="dropzone-content">
-                <div class="dropzone-icon">
-                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
-                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                    <polyline points="17 8 12 3 7 8"></polyline>
-                    <line x1="12" y1="3" x2="12" y2="15"></line>
-                  </svg>
-                </div>
-                <p class="dropzone-title">Drag & drop your PDF here</p>
-                <p class="dropzone-subtitle">or <button type="button" id="browse-btn" class="text-link">browse files</button></p>
+          <!-- Dropzone -->
+          <div id="dropzone" class="dropzone">
+            <input type="file" id="pdf-file-input" accept=".pdf" class="hidden-input">
+            <div class="dropzone-body">
+              <div class="dropzone-glyph">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="12" y1="18" x2="12" y2="12"></line>
+                  <line x1="9" y1="15" x2="15" y2="15"></line>
+                </svg>
+              </div>
+              <p class="dropzone-text"><strong>Upload PDF Document</strong></p>
+              <p class="dropzone-sub">Drop file here or <button type="button" id="browse-btn" class="link-btn">browse</button></p>
+            </div>
+          </div>
+
+          <!-- Ingestion Progress Loader -->
+          <div id="ingest-loader" class="ingest-loader hidden">
+            <div class="loader-bar"><div class="loader-bar-progress"></div></div>
+            <p id="ingest-loader-text" class="loader-caption">Parsing pages and computing dense embeddings...</p>
+          </div>
+
+          <!-- Loaded Document Metadata -->
+          <div id="loaded-dossier" class="loaded-dossier hidden">
+            <div class="doc-meta-row">
+              <div class="doc-file-info">
+                <span class="doc-badge-pdf">PDF</span>
+                <span id="meta-filename" class="doc-name" title="Document filename">document.pdf</span>
               </div>
             </div>
 
-            <!-- Upload progress / processing loader -->
-            <div id="upload-spinner" class="processing-state hidden">
-              <div class="spinner"></div>
-              <p id="upload-status-msg">Extracting text & building FAISS index...</p>
-            </div>
-
-            <!-- Document Info Card (Shown when loaded) -->
-            <div id="doc-stats-card" class="doc-stats-card hidden">
-              <div class="doc-title-row">
-                <div class="doc-icon">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                    <polyline points="14 2 14 8 20 8"></polyline>
-                  </svg>
-                </div>
-                <span id="stat-filename" class="doc-filename">document.pdf</span>
+            <div class="stats-grid">
+              <div class="stat-box">
+                <span class="stat-num" id="meta-pages">0</span>
+                <span class="stat-tag">Pages</span>
               </div>
-
-              <div class="stats-metrics">
-                <div class="metric-item">
-                  <span class="metric-label">Pages</span>
-                  <span id="stat-pages" class="metric-value">0</span>
-                </div>
-                <div class="metric-item">
-                  <span class="metric-label">Chunks</span>
-                  <span id="stat-chunks" class="metric-value">0</span>
-                </div>
-                <div class="metric-item">
-                  <span class="metric-label">Vector Store</span>
-                  <span class="metric-value text-success">FAISS</span>
-                </div>
+              <div class="stat-box">
+                <span class="stat-num" id="meta-chunks">0</span>
+                <span class="stat-tag">FAISS Chunks</span>
+              </div>
+              <div class="stat-box">
+                <span class="stat-num text-emerald">384-D</span>
+                <span class="stat-tag">Vector Dim</span>
               </div>
             </div>
-          </section>
+          </div>
+        </div>
 
-          <!-- Pipeline Architecture Explainer Card -->
-          <section class="card pipeline-card">
-            <div class="card-header">
-              <h3>Pipeline Flow</h3>
+        <!-- Grounding Diagnostics Spectrum Card -->
+        <div class="spectrum-card">
+          <div class="spectrum-header">
+            <span class="section-label">Grounding Architecture</span>
+          </div>
+          <div class="spectrum-visual">
+            <div class="spectrum-bar">
+              <div class="spectrum-zone zone-refusal" style="width: 35%;">
+                <span class="zone-tag">Refusal (Ungrounded)</span>
+              </div>
+              <div class="spectrum-zone zone-grounded" style="width: 65%;">
+                <span class="zone-tag">LLM Synthesis (Grounded)</span>
+              </div>
             </div>
-            <ol class="pipeline-steps">
-              <li>
-                <span class="step-num">1</span>
-                <div>
-                  <strong>Extract</strong>
-                  <p>Page-by-page text via <code>pypdf</code></p>
-                </div>
-              </li>
-              <li>
-                <span class="step-num">2</span>
-                <div>
-                  <strong>Chunk</strong>
-                  <p>500-char blocks with 50-char overlap</p>
-                </div>
-              </li>
-              <li>
-                <span class="step-num">3</span>
-                <div>
-                  <strong>Embed & Index</strong>
-                  <p>Local <code>all-MiniLM-L6-v2</code> & FAISS</p>
-                </div>
-              </li>
-              <li>
-                <span class="step-num">4</span>
-                <div>
-                  <strong>Grounding Check</strong>
-                  <p>Refuses in code if similarity &lt; 0.35</p>
-                </div>
-              </li>
-              <li>
-                <span class="step-num">5</span>
-                <div>
-                  <strong>Generate & Cite</strong>
-                  <p>Groq Llama 3.3 70B with page evidence</p>
-                </div>
-              </li>
-            </ol>
-          </section>
-        </aside>
+            <div class="threshold-marker" style="left: 35%;">
+              <span class="marker-line"></span>
+              <span class="marker-text">Floor (0.35)</span>
+            </div>
+          </div>
+          <p class="spectrum-note">
+            If top retrieval similarity is &lt; 0.35, the LLM is skipped in code to prevent hallucinated guesses.
+          </p>
+        </div>
 
-        <!-- Right Panel: Conversational Q&A -->
-        <section class="chat-panel">
-          <div class="chat-container">
+      </aside>
+
+      <!-- Right Column: Verification & Q&A Stream -->
+      <section class="workbench-main">
+        <div class="chat-viewport">
+          
+          <!-- Conversation Stream -->
+          <div id="chat-thread" class="chat-thread">
             
-            <!-- Chat Messages Log -->
-            <div id="chat-messages" class="chat-messages">
-              <!-- Welcome State -->
-              <div id="welcome-message" class="welcome-box">
-                <div class="welcome-icon">
-                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
-                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                  </svg>
-                </div>
-                <h3>Ask Grounded Questions</h3>
-                <p>Upload any PDF document on the left to begin. Ask any question to get an accurate answer with exact page citations. If a question is outside the document's content, the system will explicitly refuse to answer rather than fabricate.</p>
+            <!-- Empty State / Welcome -->
+            <div id="empty-state" class="empty-state">
+              <div class="empty-dossier-icon">
+                <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                  <polyline points="14 2 14 8 20 8"></polyline>
+                  <line x1="16" y1="13" x2="8" y2="13"></line>
+                  <line x1="16" y1="17" x2="8" y2="17"></line>
+                  <polyline points="10 9 9 9 8 9"></polyline>
+                </svg>
               </div>
-            </div>
-
-            <!-- Input Area -->
-            <div class="chat-input-wrapper">
-              <form id="chat-form" class="chat-form">
-                <div class="input-container">
-                  <textarea 
-                    id="question-input" 
-                    placeholder="Ask a question about the uploaded document..." 
-                    rows="1"
-                    disabled
-                  ></textarea>
-                  <button type="submit" id="send-btn" class="send-button" disabled title="Send question">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                      <line x1="22" y1="2" x2="11" y2="13"></line>
-                      <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                    </svg>
-                  </button>
-                </div>
-                <div class="input-hint">
-                  <span>Press <strong>Enter</strong> to send, <strong>Shift+Enter</strong> for newline</span>
-                  <span id="grounding-info-hint" class="hint-tag">Grounding floor: 0.35</span>
-                </div>
-              </form>
+              <h2 class="empty-title">Verifiable Document Intelligence</h2>
+              <p class="empty-subtitle">
+                Upload any research paper, policy, financial report, or specification. Ask questions to retrieve evidence-backed answers with exact page numbers. If the facts are absent, Veritas will refuse rather than fabricate.
+              </p>
             </div>
 
           </div>
-        </section>
 
-      </div>
+          <!-- Floating Starter Chips (Shown when doc is loaded) -->
+          <div id="starter-chips" class="starter-chips hidden">
+            <span class="starter-label">Quick Prompts:</span>
+            <button class="chip" data-query="What are the main objectives and findings in this document?">Objectives & Overview</button>
+            <button class="chip" data-query="What are the key financial numbers, metrics, or budgets mentioned?">Financials & Budgets</button>
+            <button class="chip" data-query="What are the specific deadlines, dates, or milestones?">Deadlines & Milestones</button>
+            <button class="chip" data-query="Explain the propulsion warp engine mechanics in the quantum multiverse.">Test Out-of-Scope Refusal ⚡</button>
+          </div>
+
+          <!-- Bottom Prompt Composer -->
+          <div class="composer-container">
+            <form id="composer-form" class="composer-form">
+              <div class="composer-box">
+                <textarea 
+                  id="composer-input" 
+                  class="composer-textarea"
+                  placeholder="Upload a document to begin asking questions..."
+                  rows="1"
+                  disabled
+                ></textarea>
+                
+                <button type="submit" id="composer-send" class="btn-send" disabled title="Submit query (Enter)">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                  </svg>
+                </button>
+              </div>
+
+              <div class="composer-footer">
+                <span class="footer-hint"><strong>Enter</strong> to submit &bull; <strong>Shift+Enter</strong> for newline</span>
+                <span class="footer-guarantee">✓ Deterministic Code-Level Grounding Guarantee</span>
+              </div>
+            </form>
+          </div>
+
+        </div>
+      </section>
+
     </main>
   </div>
 

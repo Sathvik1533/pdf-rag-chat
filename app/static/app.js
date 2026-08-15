@@ -1,65 +1,94 @@
 /**
- * Frontend Application Controller for PDF RAG Assistant
+ * VERITAS — Document Intelligence & Grounded RAG
+ * Client Application Controller
  */
 
 document.addEventListener('DOMContentLoaded', () => {
-  // Elements
+  // DOM Elements
   const dropzone = document.getElementById('dropzone');
   const fileInput = document.getElementById('pdf-file-input');
   const browseBtn = document.getElementById('browse-btn');
-  const uploadSpinner = document.getElementById('upload-spinner');
-  const uploadStatusMsg = document.getElementById('upload-status-msg');
-  const docStatsCard = document.getElementById('doc-stats-card');
-  const statFilename = document.getElementById('stat-filename');
-  const statPages = document.getElementById('stat-pages');
-  const statChunks = document.getElementById('stat-chunks');
-  const statusBadge = document.getElementById('system-status-badge');
-  const statusText = document.getElementById('status-text');
+  const loadSampleBtn = document.getElementById('load-sample-btn');
+  const ingestLoader = document.getElementById('ingest-loader');
+  const ingestLoaderText = document.getElementById('ingest-loader-text');
+  const loadedDossier = document.getElementById('loaded-dossier');
+  const dossierStatus = document.getElementById('dossier-status');
+  
+  const metaFilename = document.getElementById('meta-filename');
+  const metaPages = document.getElementById('meta-pages');
+  const metaChunks = document.getElementById('meta-chunks');
 
-  const chatMessages = document.getElementById('chat-messages');
-  const welcomeMessage = document.getElementById('welcome-message');
-  const chatForm = document.getElementById('chat-form');
-  const questionInput = document.getElementById('question-input');
-  const sendBtn = document.getElementById('send-btn');
-  const groundingHint = document.getElementById('grounding-info-hint');
+  const toggleConfigBtn = document.getElementById('toggle-config-btn');
+  const configDrawer = document.getElementById('config-drawer');
+  const closeConfigBtn = document.getElementById('close-config-btn');
+  const cfgGroqKey = document.getElementById('cfg-groq-key');
+  const cfgThreshold = document.getElementById('cfg-threshold');
+  const cfgThresholdVal = document.getElementById('cfg-threshold-val');
+  const telemetryThreshold = document.getElementById('telemetry-threshold');
 
-  const toggleSettingsBtn = document.getElementById('toggle-settings-btn');
-  const settingsPanel = document.getElementById('settings-panel');
-  const groqApiKeyInput = document.getElementById('groq-api-key-input');
-  const thresholdInput = document.getElementById('threshold-input');
-  const thresholdVal = document.getElementById('threshold-val');
+  const chatThread = document.getElementById('chat-thread');
+  const emptyState = document.getElementById('empty-state');
+  const starterChips = document.getElementById('starter-chips');
+  const composerForm = document.getElementById('composer-form');
+  const composerInput = document.getElementById('composer-input');
+  const composerSend = document.getElementById('composer-send');
 
-  let currentDocument = null;
+  // Check current indexing status on boot
+  refreshEngineStatus();
 
-  // Check server initial status
-  checkStatus();
-
-  // Settings Panel Toggle
-  toggleSettingsBtn.addEventListener('click', () => {
-    settingsPanel.classList.toggle('hidden');
+  // --------------------------------------------------------------------------
+  // Configuration Drawer Handlers
+  // --------------------------------------------------------------------------
+  toggleConfigBtn.addEventListener('click', () => {
+    configDrawer.classList.remove('hidden');
   });
 
-  thresholdInput.addEventListener('input', (e) => {
-    thresholdVal.textContent = parseFloat(e.target.value).toFixed(2);
-    groundingHint.textContent = `Grounding floor: ${parseFloat(e.target.value).toFixed(2)}`;
+  closeConfigBtn.addEventListener('click', () => {
+    configDrawer.classList.add('hidden');
   });
 
-  // File Upload Handlers
+  configDrawer.addEventListener('click', (e) => {
+    if (e.target === configDrawer) configDrawer.classList.add('hidden');
+  });
+
+  cfgThreshold.addEventListener('input', (e) => {
+    const val = parseFloat(e.target.value).toFixed(2);
+    cfgThresholdVal.textContent = val;
+    telemetryThreshold.textContent = val;
+    updateSpectrumMarker(parseFloat(val));
+  });
+
+  function updateSpectrumMarker(val) {
+    const marker = document.querySelector('.threshold-marker');
+    const refusalZone = document.querySelector('.zone-refusal');
+    const groundedZone = document.querySelector('.zone-grounded');
+    const markerText = document.querySelector('.marker-text');
+    
+    const pct = (val * 100).toFixed(0);
+    if (marker) marker.style.left = `${pct}%`;
+    if (refusalZone) refusalZone.style.width = `${pct}%`;
+    if (groundedZone) groundedZone.style.width = `${100 - pct}%`;
+    if (markerText) markerText.textContent = `Floor (${val})`;
+  }
+
+  // --------------------------------------------------------------------------
+  // File Upload & Ingestion
+  // --------------------------------------------------------------------------
   browseBtn.addEventListener('click', () => fileInput.click());
   dropzone.addEventListener('click', (e) => {
     if (e.target !== browseBtn) fileInput.click();
   });
 
-  ['dragenter', 'dragover'].forEach(eventName => {
-    dropzone.addEventListener(eventName, (e) => {
+  ['dragenter', 'dragover'].forEach(name => {
+    dropzone.addEventListener(name, (e) => {
       e.preventDefault();
       e.stopPropagation();
       dropzone.classList.add('dragover');
     });
   });
 
-  ['dragleave', 'drop'].forEach(eventName => {
-    dropzone.addEventListener(eventName, (e) => {
+  ['dragleave', 'drop'].forEach(name => {
+    dropzone.addEventListener(name, (e) => {
       e.preventDefault();
       e.stopPropagation();
       dropzone.classList.remove('dragover');
@@ -69,43 +98,58 @@ document.addEventListener('DOMContentLoaded', () => {
   dropzone.addEventListener('drop', (e) => {
     const files = e.dataTransfer.files;
     if (files.length > 0 && files[0].name.toLowerCase().endsWith('.pdf')) {
-      handleUpload(files[0]);
+      ingestPdfFile(files[0]);
     } else {
-      alert('Please drop a valid PDF file.');
+      alert('Please select a valid PDF file.');
     }
   });
 
   fileInput.addEventListener('change', (e) => {
     if (e.target.files.length > 0) {
-      handleUpload(e.target.files[0]);
+      ingestPdfFile(e.target.files[0]);
     }
   });
 
-  // Auto-grow textarea & Enter handling
-  questionInput.addEventListener('input', () => {
-    questionInput.style.height = 'auto';
-    questionInput.style.height = Math.min(questionInput.scrollHeight, 120) + 'px';
-  });
+  // Load Sample Document
+  loadSampleBtn.addEventListener('click', async () => {
+    try {
+      loadSampleBtn.disabled = true;
+      loadSampleBtn.innerHTML = '<span>Loading...</span>';
+      
+      const res = await fetch('/sample-pdf');
+      if (!res.ok) throw new Error('Could not fetch sample PDF');
+      
+      const blob = await res.blob();
+      const sampleFile = new File([blob], 'sample_project_orion.pdf', { type: 'application/pdf' });
+      await ingestPdfFile(sampleFile);
 
-  questionInput.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      if (!sendBtn.disabled && questionInput.value.trim().length > 0) {
-        chatForm.dispatchEvent(new Event('submit'));
-      }
+    } catch (err) {
+      alert(`Failed to load sample: ${err.message}`);
+    } finally {
+      loadSampleBtn.disabled = false;
+      loadSampleBtn.innerHTML = `
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+          <line x1="12" y1="18" x2="12" y2="12"></line>
+          <line x1="9" y1="15" x2="15" y2="15"></line>
+        </svg>
+        <span>Load Sample Doc</span>
+      `;
     }
   });
 
-  // Upload Logic
-  async function handleUpload(file) {
+  async function ingestPdfFile(file) {
     const formData = new FormData();
     formData.append('file', file);
 
     // UI Loading State
-    uploadSpinner.classList.remove('hidden');
-    uploadStatusMsg.textContent = `Processing "${file.name}" (Extracting text & building FAISS index)...`;
+    ingestLoader.classList.remove('hidden');
+    ingestLoaderText.textContent = `Extracting text & vectorizing "${file.name}"...`;
     dropzone.classList.add('hidden');
-    docStatsCard.classList.add('hidden');
+    loadedDossier.classList.add('hidden');
+    dossierStatus.className = 'status-indicator status-waiting';
+    dossierStatus.textContent = 'Processing';
 
     try {
       const response = await fetch('/upload', {
@@ -114,67 +158,93 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       const data = await response.json();
+      if (!response.ok) throw new Error(data.detail || 'Ingestion failed');
 
-      if (!response.ok) {
-        throw new Error(data.detail || 'Upload failed');
-      }
+      // Update Dossier View
+      metaFilename.textContent = data.filename;
+      metaPages.textContent = data.total_pages;
+      metaChunks.textContent = data.total_chunks;
 
-      // Success
-      currentDocument = data;
-      statFilename.textContent = data.filename;
-      statPages.textContent = data.total_pages;
-      statChunks.textContent = data.total_chunks;
-
-      uploadSpinner.classList.add('hidden');
-      docStatsCard.classList.remove('hidden');
+      ingestLoader.classList.add('hidden');
+      loadedDossier.classList.remove('hidden');
       dropzone.classList.remove('hidden');
+      dossierStatus.className = 'status-indicator status-active';
+      dossierStatus.textContent = 'Indexed & Ready';
 
-      statusBadge.className = 'status-badge status-ready';
-      statusText.textContent = `Indexed: ${data.filename}`;
+      // Unlock Workspace
+      composerInput.disabled = false;
+      composerSend.disabled = false;
+      composerInput.placeholder = `Ask anything about ${data.filename}...`;
+      composerInput.focus();
 
-      // Enable Chat
-      questionInput.disabled = false;
-      sendBtn.disabled = false;
-      questionInput.focus();
+      starterChips.classList.remove('hidden');
+      if (emptyState) emptyState.classList.add('hidden');
 
-      if (welcomeMessage) {
-        welcomeMessage.classList.add('hidden');
-      }
-
-      appendSystemMessage(`📄 **"${data.filename}"** is ready! ${data.total_pages} pages parsed into ${data.total_chunks} chunks. Ask any question below.`);
+      appendNotice(`📄 **Dossier Loaded:** "${data.filename}" (${data.total_pages} pages, ${data.total_chunks} indexed vector chunks). Ask any question below.`);
 
     } catch (err) {
       console.error(err);
-      uploadSpinner.classList.add('hidden');
+      ingestLoader.classList.add('hidden');
       dropzone.classList.remove('hidden');
-      alert(`Upload error: ${err.message}`);
+      dossierStatus.className = 'status-indicator status-waiting';
+      dossierStatus.textContent = 'Failed';
+      alert(`Ingestion Error: ${err.message}`);
     }
   }
 
-  // Chat Submission
-  chatForm.addEventListener('submit', async (e) => {
+  // --------------------------------------------------------------------------
+  // Starter Chips
+  // --------------------------------------------------------------------------
+  document.querySelectorAll('.chip').forEach(chip => {
+    chip.addEventListener('click', () => {
+      const query = chip.getAttribute('data-query');
+      if (query && !composerInput.disabled) {
+        composerInput.value = query;
+        composerForm.dispatchEvent(new Event('submit'));
+      }
+    });
+  });
+
+  // --------------------------------------------------------------------------
+  // Q&A Conversation Flow
+  // --------------------------------------------------------------------------
+  composerInput.addEventListener('input', () => {
+    composerInput.style.height = 'auto';
+    composerInput.style.height = Math.min(composerInput.scrollHeight, 140) + 'px';
+  });
+
+  composerInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      if (!composerSend.disabled && composerInput.value.trim().length > 0) {
+        composerForm.dispatchEvent(new Event('submit'));
+      }
+    }
+  });
+
+  composerForm.addEventListener('submit', async (e) => {
     e.preventDefault();
-    const query = questionInput.value.trim();
+    const query = composerInput.value.trim();
     if (!query) return;
 
-    // Reset input
-    questionInput.value = '';
-    questionInput.style.height = 'auto';
-    questionInput.disabled = true;
-    sendBtn.disabled = true;
+    // Reset input state
+    composerInput.value = '';
+    composerInput.style.height = 'auto';
+    composerInput.disabled = true;
+    composerSend.disabled = true;
 
     // Append User Message
-    appendMessage('user', query);
+    appendUserBubble(query);
 
-    // Append Loading Assistant Bubble
-    const loadingId = 'loading-' + Date.now();
-    appendLoadingBubble(loadingId);
+    // Append Assistant Loading Indicator
+    const loaderId = 'loading-' + Date.now();
+    appendLoadingBubble(loaderId);
 
     try {
       const payload = {
         question: query,
-        groq_api_key: groqApiKeyInput.value.trim() || undefined,
-        threshold: parseFloat(thresholdInput.value),
+        groq_api_key: cfgGroqKey.value.trim() || undefined,
+        threshold: parseFloat(cfgThreshold.value),
       };
 
       const response = await fetch('/chat', {
@@ -184,137 +254,152 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       const data = await response.json();
-      removeLoadingBubble(loadingId);
+      removeLoadingBubble(loaderId);
 
       if (!response.ok) {
-        appendMessage('assistant', `❌ **Error:** ${data.detail || 'Failed to generate answer'}`);
+        appendNotice(`❌ **Engine Error:** ${data.detail || 'Failed to generate response'}`);
         return;
       }
 
-      appendAssistantResponse(data);
+      appendAssistantBubble(data);
 
     } catch (err) {
-      removeLoadingBubble(loadingId);
-      appendMessage('assistant', `❌ **Network Error:** ${err.message}`);
+      removeLoadingBubble(loaderId);
+      appendNotice(`❌ **Network Error:** ${err.message}`);
     } finally {
-      questionInput.disabled = false;
-      sendBtn.disabled = false;
-      questionInput.focus();
+      composerInput.disabled = false;
+      composerSend.disabled = false;
+      composerInput.focus();
     }
   });
 
-  // Render Functions
-  function appendMessage(sender, text) {
-    if (welcomeMessage) welcomeMessage.classList.add('hidden');
+  // --------------------------------------------------------------------------
+  // Message Rendering Functions
+  // --------------------------------------------------------------------------
+  function appendUserBubble(text) {
+    if (emptyState) emptyState.classList.add('hidden');
 
     const row = document.createElement('div');
-    row.className = `message-row ${sender}`;
+    row.className = 'msg-row msg-user';
 
     const senderTag = document.createElement('div');
-    senderTag.className = 'message-sender';
-    senderTag.textContent = sender === 'user' ? 'You' : 'Assistant';
+    senderTag.className = 'msg-sender-tag';
+    senderTag.textContent = 'Query';
 
     const bubble = document.createElement('div');
-    bubble.className = 'message-bubble';
-    bubble.innerHTML = window.marked ? marked.parse(text) : text;
+    bubble.className = 'msg-bubble';
+    bubble.textContent = text;
 
     row.appendChild(senderTag);
     row.appendChild(bubble);
-    chatMessages.appendChild(row);
-    scrollToBottom();
+    chatThread.appendChild(row);
+    scrollStreamToBottom();
   }
 
-  function appendSystemMessage(text) {
-    const row = document.createElement('div');
-    row.className = 'message-row assistant';
-
-    const bubble = document.createElement('div');
-    bubble.className = 'message-bubble';
-    bubble.innerHTML = window.marked ? marked.parse(text) : text;
-
-    row.appendChild(bubble);
-    chatMessages.appendChild(row);
-    scrollToBottom();
-  }
-
-  function appendAssistantResponse(data) {
-    if (welcomeMessage) welcomeMessage.classList.add('hidden');
+  function appendAssistantBubble(data) {
+    if (emptyState) emptyState.classList.add('hidden');
 
     const row = document.createElement('div');
-    row.className = 'message-row assistant';
+    row.className = 'msg-row msg-assistant';
 
     const senderTag = document.createElement('div');
-    senderTag.className = 'message-sender';
-    senderTag.textContent = 'Assistant';
+    senderTag.className = 'msg-sender-tag';
+    senderTag.textContent = 'Veritas Synthesis';
 
     const bubble = document.createElement('div');
-    bubble.className = 'message-bubble';
+    bubble.className = 'msg-bubble';
 
-    // Grounding Status Pill
-    const groundingBadge = document.createElement('div');
+    // Grounding Audit Pill
+    const auditBadge = document.createElement('div');
     if (data.grounded) {
-      groundingBadge.className = 'grounding-badge grounded';
-      groundingBadge.innerHTML = `✓ Grounded in Document (Confidence: ${(data.top_similarity * 100).toFixed(1)}%)`;
+      auditBadge.className = 'grounding-audit-badge audit-grounded';
+      auditBadge.innerHTML = `✓ Grounded in Document (${(data.top_similarity * 100).toFixed(1)}% Confidence Match)`;
     } else {
-      groundingBadge.className = 'grounding-badge refusal';
-      groundingBadge.innerHTML = `⚠️ Low Confidence (${(data.top_similarity * 100).toFixed(1)}% &lt; ${(data.threshold * 100).toFixed(0)}%) — Grounding Refusal Enforced`;
+      auditBadge.className = 'grounding-audit-badge audit-refusal';
+      auditBadge.innerHTML = `⚠️ Low Confidence (${(data.top_similarity * 100).toFixed(1)}% &lt; ${(data.threshold * 100).toFixed(0)}%) — Grounding Refusal Enforced`;
     }
-    bubble.appendChild(groundingBadge);
+    bubble.appendChild(auditBadge);
 
-    // Answer Content
-    const answerContent = document.createElement('div');
-    answerContent.className = 'answer-markdown';
-    answerContent.innerHTML = window.marked ? marked.parse(data.answer) : data.answer;
-    bubble.appendChild(answerContent);
+    // Answer Markdown Body
+    const markdownBody = document.createElement('div');
+    markdownBody.className = 'answer-body';
+    markdownBody.innerHTML = window.marked ? marked.parse(data.answer) : data.answer;
+    bubble.appendChild(markdownBody);
 
-    // Citations (if grounded and present)
+    // Evidence Deck (Citations)
     if (data.grounded && data.citations && data.citations.length > 0) {
-      const citationsBox = document.createElement('div');
-      citationsBox.className = 'citations-box';
+      const deck = document.createElement('div');
+      deck.className = 'evidence-deck';
 
-      const header = document.createElement('div');
-      header.className = 'citations-header';
-      header.textContent = `Evidence Citations (${data.citations.length} Chunks Used):`;
-      citationsBox.appendChild(header);
+      const deckHeader = document.createElement('div');
+      deckHeader.className = 'evidence-header';
+      deckHeader.innerHTML = `
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+        </svg>
+        <span>Verifiable Evidence Deck (${data.citations.length} Chunks Used):</span>
+      `;
+      deck.appendChild(deckHeader);
 
-      const list = document.createElement('div');
-      list.className = 'citation-list';
+      const cardsContainer = document.createElement('div');
+      cardsContainer.className = 'evidence-cards';
 
       data.citations.forEach((c) => {
-        const item = document.createElement('div');
-        item.className = 'citation-card';
-        item.innerHTML = `
-          <div class="citation-meta">
+        const card = document.createElement('div');
+        card.className = 'evidence-card';
+        card.innerHTML = `
+          <div class="evidence-top">
             <span>Page ${c.page}</span>
-            <span>Similarity: ${(c.similarity_score * 100).toFixed(1)}%</span>
+            <span>Match: ${(c.similarity_score * 100).toFixed(1)}%</span>
           </div>
-          <div class="citation-excerpt">"${c.excerpt}"</div>
+          <div class="evidence-quote">"${c.excerpt}"</div>
         `;
-        list.appendChild(item);
+        cardsContainer.appendChild(card);
       });
 
-      citationsBox.appendChild(list);
-      bubble.appendChild(citationsBox);
+      deck.appendChild(cardsContainer);
+      bubble.appendChild(deck);
     }
 
     row.appendChild(senderTag);
     row.appendChild(bubble);
-    chatMessages.appendChild(row);
-    scrollToBottom();
+    chatThread.appendChild(row);
+    scrollStreamToBottom();
+  }
+
+  function appendNotice(text) {
+    if (emptyState) emptyState.classList.add('hidden');
+
+    const row = document.createElement('div');
+    row.className = 'msg-row msg-assistant';
+
+    const bubble = document.createElement('div');
+    bubble.className = 'msg-bubble';
+    bubble.innerHTML = window.marked ? marked.parse(text) : text;
+
+    row.appendChild(bubble);
+    chatThread.appendChild(row);
+    scrollStreamToBottom();
   }
 
   function appendLoadingBubble(id) {
     const row = document.createElement('div');
-    row.className = 'message-row assistant';
+    row.className = 'msg-row msg-assistant';
     row.id = id;
 
     const bubble = document.createElement('div');
-    bubble.className = 'message-bubble';
-    bubble.innerHTML = '<div style="display:flex;align-items:center;gap:0.5rem;"><div class="spinner" style="width:14px;height:14px;"></div><span>Retrieving evidence & generating answer...</span></div>';
+    bubble.className = 'msg-bubble';
+    bubble.innerHTML = `
+      <div style="display:flex;align-items:center;gap:0.6rem;font-size:0.85rem;color:var(--text-secondary);">
+        <div class="loader-bar" style="width:24px;height:4px;border-radius:2px;"><div class="loader-bar-progress"></div></div>
+        <span>Searching semantic vector space & synthesizing answer...</span>
+      </div>
+    `;
 
     row.appendChild(bubble);
-    chatMessages.appendChild(row);
-    scrollToBottom();
+    chatThread.appendChild(row);
+    scrollStreamToBottom();
   }
 
   function removeLoadingBubble(id) {
@@ -322,28 +407,30 @@ document.addEventListener('DOMContentLoaded', () => {
     if (el) el.remove();
   }
 
-  function scrollToBottom() {
-    chatMessages.scrollTop = chatMessages.scrollHeight;
+  function scrollStreamToBottom() {
+    chatThread.scrollTop = chatThread.scrollHeight;
   }
 
-  async function checkStatus() {
+  async function refreshEngineStatus() {
     try {
       const res = await fetch('/status');
       if (res.ok) {
         const data = await res.json();
         if (data.indexed) {
-          statFilename.textContent = data.document_name;
-          statPages.textContent = data.total_pages;
-          statChunks.textContent = data.total_chunks;
-          docStatsCard.classList.remove('hidden');
-          statusBadge.className = 'status-badge status-ready';
-          statusText.textContent = `Indexed: ${data.document_name}`;
-          questionInput.disabled = false;
-          sendBtn.disabled = false;
+          metaFilename.textContent = data.document_name;
+          metaPages.textContent = data.total_pages;
+          metaChunks.textContent = data.total_chunks;
+          loadedDossier.classList.remove('hidden');
+          dossierStatus.className = 'status-indicator status-active';
+          dossierStatus.textContent = 'Indexed & Ready';
+          composerInput.disabled = false;
+          composerSend.disabled = false;
+          composerInput.placeholder = `Ask anything about ${data.document_name}...`;
+          starterChips.classList.remove('hidden');
         }
       }
     } catch (e) {
-      console.log('Status check offline');
+      console.log('Status polling offline');
     }
   }
 });

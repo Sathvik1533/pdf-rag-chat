@@ -121,6 +121,15 @@ async def get_system_status():
     )
 
 
+@app.get("/sample-pdf", tags=["RAG"])
+async def get_sample_pdf():
+    """Returns a generated 3-page sample PDF for instant 1-click testing."""
+    from scripts.verify_rag import generate_sample_pdf_bytes
+    from fastapi.responses import Response
+    pdf_bytes = generate_sample_pdf_bytes()
+    return Response(content=pdf_bytes, media_type="application/pdf", headers={"Content-Disposition": "inline; filename=sample_project_orion.pdf"})
+
+
 @app.post("/upload", response_model=UploadResponse, tags=["RAG"])
 async def upload_pdf(file: UploadFile = File(...)):
     """
