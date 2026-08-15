@@ -243,6 +243,14 @@ document.addEventListener('DOMContentLoaded', () => {
       metaPages.textContent = `${data.total_pages} sections`;
       metaChunks.textContent = `${data.total_chunks} chunks`;
 
+      // Save to Document History Library
+      saveDocHistory({
+        filename: data.filename,
+        total_pages: data.total_pages,
+        total_chunks: data.total_chunks,
+        timestamp: Date.now()
+      });
+
       ingestLoader.classList.add('hidden');
       docMetaStrip.classList.remove('hidden');
       dropzone.classList.add('hidden'); // Ensure dropzone stays hidden!
@@ -625,6 +633,137 @@ document.addEventListener('DOMContentLoaded', () => {
       btnVoiceDictate.style.opacity = '0.4';
     }
   }
+
+  // --------------------------------------------------------------------------
+  // Document History & Library Manager
+  // --------------------------------------------------------------------------
+  const btnDocHistory = document.getElementById('btn-doc-history');
+  const historyModal = document.getElementById('history-modal');
+  const closeHistoryBtn = document.getElementById('close-history-btn');
+  const historyBackdrop = document.getElementById('history-backdrop');
+  const historyList = document.getElementById('history-list');
+  const historyBadgeCount = document.getElementById('history-badge-count');
+
+  function getDocHistory() {
+    try {
+      return JSON.parse(localStorage.getItem('veritas_doc_history') || '[]');
+    } catch {
+      return [];
+    }
+  }
+
+  function saveDocHistory(doc) {
+    const list = getDocHistory().filter(item => item.filename !== doc.filename);
+    list.unshift(doc);
+    if (list.length > 10) list.pop(); // keep last 10
+    localStorage.setItem('veritas_doc_history', JSON.stringify(list));
+    updateHistoryBadge();
+  }
+
+  function updateHistoryBadge() {
+    const list = getDocHistory();
+    if (historyBadgeCount) {
+      if (list.length > 0) {
+        historyBadgeCount.textContent = list.length;
+        historyBadgeCount.classList.remove('hidden');
+      } else {
+        historyBadgeCount.classList.add('hidden');
+      }
+    }
+  }
+
+  function renderHistoryModal() {
+    if (!historyList) return;
+    const list = getDocHistory();
+    if (list.length === 0) {
+      historyList.innerHTML = `
+        <div style="text-align:center;padding:2rem 1rem;color:var(--text-muted);">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:0.5rem;opacity:0.5;">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          </svg>
+          <p style="font-size:0.8rem;font-weight:600;">No previous documents in library yet.</p>
+          <p style="font-size:0.72rem;margin-top:0.2rem;">Uploaded files and sample documents will appear here for instant 1-click switching.</p>
+        </div>
+      `;
+      return;
+    }
+
+    historyList.innerHTML = '';
+    list.forEach((doc, idx) => {
+      const isCurrent = currentDossier && currentDossier.filename === doc.filename;
+      const item = document.createElement('div');
+      item.className = `history-item ${isCurrent ? 'active-item' : ''}`;
+      const ext = doc.filename.split('.').pop().toUpperCase();
+      const timeStr = doc.timestamp ? new Date(doc.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Session';
+
+      item.innerHTML = `
+        <div class="history-item-left">
+          <div class="history-icon">
+            <span style="font-size:0.68rem;font-weight:800;">${escapeHtml(ext)}</span>
+          </div>
+          <div class="history-meta">
+            <div class="history-name" title="${escapeHtml(doc.filename)}">${escapeHtml(doc.filename)}</div>
+            <div class="history-details">${doc.total_pages || '?'} sections • ${doc.total_chunks || '?'} chunks • ${timeStr}</div>
+          </div>
+        </div>
+        <div class="history-actions">
+          ${isCurrent 
+            ? '<span class="badge-status-ready">ACTIVE</span>' 
+            : `<button class="btn-history-load" data-index="${idx}">Switch</button>`}
+          <button class="btn-history-delete" data-index="${idx}" title="Remove from Library">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+      `;
+
+      const switchBtn = item.querySelector('.btn-history-load');
+      if (switchBtn) {
+        switchBtn.addEventListener('click', async () => {
+          if (doc.filename === 'sample_project_orion.pdf') {
+            loadSampleBtn.click();
+          } else {
+            alert(`"${doc.filename}" was previously processed. Please select the file to reload its vectors.`);
+            fileInput.click();
+          }
+          historyModal.classList.add('hidden');
+        });
+      }
+
+      const delBtn = item.querySelector('.btn-history-delete');
+      if (delBtn) {
+        delBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const updated = getDocHistory().filter((_, i) => i !== idx);
+          localStorage.setItem('veritas_doc_history', JSON.stringify(updated));
+          updateHistoryBadge();
+          renderHistoryModal();
+        });
+      }
+
+      historyList.appendChild(item);
+    });
+  }
+
+  if (btnDocHistory) {
+    btnDocHistory.addEventListener('click', () => {
+      renderHistoryModal();
+      if (historyModal) historyModal.classList.remove('hidden');
+    });
+  }
+  if (closeHistoryBtn) {
+    closeHistoryBtn.addEventListener('click', () => {
+      if (historyModal) historyModal.classList.add('hidden');
+    });
+  }
+  if (historyBackdrop) {
+    historyBackdrop.addEventListener('click', () => {
+      if (historyModal) historyModal.classList.add('hidden');
+    });
+  }
+  updateHistoryBadge();
 
   // --------------------------------------------------------------------------
   // Export Studio Modal Handlers

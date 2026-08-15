@@ -45,7 +45,15 @@
         </div>
       </div>
 
-      <div class="nav-right">
+        <button id="btn-doc-history" class="btn btn-ghost btn-sm" title="Document Library & History: View and switch between previously uploaded documents in this session">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polyline points="12 6 12 12 16 14"></polyline>
+          </svg>
+          <span>History</span>
+          <span id="history-badge-count" class="badge-count hidden">0</span>
+        </button>
+
         <button id="load-sample-btn" class="btn btn-secondary btn-sm" title="Try Sample Document: Load a pre-packaged 3-page aerospace engineering specification to test Veritas immediately">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
@@ -87,6 +95,29 @@
         </button>
       </div>
     </header>
+
+    <!-- Document History & Library Modal -->
+    <div id="history-modal" class="config-drawer hidden" title="Document Library & History Modal">
+      <div class="config-backdrop" id="history-backdrop"></div>
+      <div class="config-card">
+        <div class="config-header">
+          <div class="config-title">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+            <h3>Document Library &amp; History</h3>
+          </div>
+          <button id="close-history-btn" class="btn-close" title="Close Library">&times;</button>
+        </div>
+        <div class="config-body">
+          <p class="config-desc">Switch between previously analyzed documents or reload them into memory with 1-click.</p>
+          <div id="history-list" class="history-list">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+      </div>
+    </div>
 
     <!-- Export Studio Modal -->
     <div id="export-modal" class="config-drawer hidden" title="Export Studio Modal">
@@ -305,7 +336,11 @@
             </div>
             <div class="presets-grid">
               <button type="button" class="preset-card" id="btn-veritas-brief" title="Generate an executive strategic briefing">
-                <div class="preset-icon icon-gold">⚡</div>
+                <div class="preset-icon icon-gold">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+                  </svg>
+                </div>
                 <div class="preset-meta">
                   <strong>Executive Summary Brief</strong>
                   <p>Synthesize strategic mandate, core goals, and primary takeaways.</p>
@@ -313,25 +348,40 @@
               </button>
 
               <button type="button" class="preset-card" id="btn-veritas-metrics" title="Extract key numerical metrics, financials, and KPIs into a table">
-                <div class="preset-icon icon-emerald">📊</div>
+                <div class="preset-icon icon-emerald">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="18" y1="20" x2="18" y2="10"></line>
+                    <line x1="12" y1="20" x2="12" y2="4"></line>
+                    <line x1="6" y1="20" x2="6" y2="14"></line>
+                  </svg>
+                </div>
                 <div class="preset-meta">
-                  <strong>Key Metrics & Financials</strong>
+                  <strong>Key Metrics &amp; Financials</strong>
                   <p>Extract numerical figures, budgets, and measurable milestones into a structured table.</p>
                 </div>
               </button>
 
               <button type="button" class="preset-card" id="btn-veritas-risks" title="Identify operational constraints, circuit breakers, and delivery schedules">
-                <div class="preset-icon icon-amber">🛡️</div>
+                <div class="preset-icon icon-amber">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                  </svg>
+                </div>
                 <div class="preset-meta">
-                  <strong>Risks & Milestone Timelines</strong>
+                  <strong>Risks &amp; Milestone Timelines</strong>
                   <p>Identify operational constraints, failure risks, and delivery schedules.</p>
                 </div>
               </button>
 
               <button type="button" class="preset-card" id="btn-veritas-qa" title="Generate comprehensive study questions and answers">
-                <div class="preset-icon icon-purple">🔍</div>
+                <div class="preset-icon icon-purple">
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                  </svg>
+                </div>
                 <div class="preset-meta">
-                  <strong>Q&A Study Flashcards</strong>
+                  <strong>Q&amp;A Study Flashcards</strong>
                   <p>Generate essential test questions and grounded answers based on document content.</p>
                 </div>
               </button>
