@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import io
 import os
+import gc
 import logging
 from dataclasses import dataclass, field
 from typing import List, Dict, Any, Optional, Tuple
@@ -130,7 +131,10 @@ class RAGPipeline:
     def embedder(self):
         """Lazy-load the embedding model on first use so server boots instantly with 0 memory spike."""
         if self._embedder is None:
+            import os
+            os.environ["TOKENIZERS_PARALLELISM"] = "false"
             import torch
+            torch.set_grad_enabled(False)
             torch.set_num_threads(1)
             if hasattr(torch, "set_num_interop_threads"):
                 try:
@@ -143,6 +147,7 @@ class RAGPipeline:
                 self.embedding_dim = self._embedder.get_embedding_dimension()
             else:
                 self.embedding_dim = self._embedder.get_sentence_embedding_dimension()
+            gc.collect()
         return self._embedder
 
     # -------------------------------------------------------------------------

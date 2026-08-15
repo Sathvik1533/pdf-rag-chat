@@ -30,8 +30,7 @@ logging.basicConfig(level=logging.INFO)
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
-    Application Lifespan: Pre-warms the SentenceTransformer embedding model on startup
-    so uploads never experience OOM or CPU spikes during request processing.
+    Fast, lightweight lifespan startup allowing instant port binding without memory spikes.
     """
     try:
         torch.set_num_threads(1)
@@ -40,14 +39,12 @@ async def lifespan(app: FastAPI):
                 torch.set_num_interop_threads(1)
             except RuntimeError:
                 pass
-        # Pre-load embedding model during idle startup
-        _ = pipeline.embedder
-        _ = pipeline.embedder.encode(["warmup"], batch_size=1, show_progress_bar=False)
         gc.collect()
-        logger.info("SentenceTransformer pre-warmed and ready for instant requests.")
+        logger.info("Veritas server initialized and ready.")
     except Exception as e:
-        logger.warning(f"Lifespan warmup note: {e}")
+        logger.warning(f"Startup initialization note: {e}")
     yield
+    gc.collect()
 
 
 # Initialize FastAPI App
