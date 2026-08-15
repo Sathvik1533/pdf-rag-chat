@@ -141,8 +141,12 @@ class RAGPipeline:
                     torch.set_num_interop_threads(1)
                 except RuntimeError:
                     pass
-            logger.info(f"Loading embedding model: {self.embedding_model_name} on CPU...")
-            self._embedder = SentenceTransformer(self.embedding_model_name, device="cpu")
+            logger.info(f"Loading embedding model: {self.embedding_model_name} with low_cpu_mem_usage on CPU...")
+            self._embedder = SentenceTransformer(
+                self.embedding_model_name,
+                device="cpu",
+                model_kwargs={"low_cpu_mem_usage": True}
+            )
 
             if hasattr(self._embedder, "get_embedding_dimension"):
                 self.embedding_dim = self._embedder.get_embedding_dimension()

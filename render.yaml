@@ -3,7 +3,7 @@ services:
     name: pdf-rag-chat
     env: python
     buildCommand: "export HF_HOME=$(pwd)/.cache/huggingface && pip install --upgrade pip && pip install -r requirements.txt && python -c 'import os; from app.config import CACHE_DIR; from sentence_transformers import SentenceTransformer; SentenceTransformer(\"all-MiniLM-L6-v2\", device=\"cpu\", cache_folder=str(CACHE_DIR))'"
-    startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT"
+    startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT --workers 1 --limit-concurrency 10"
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.15
