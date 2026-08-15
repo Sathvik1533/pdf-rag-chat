@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Verifiable PDF RAG Assistant</title>
+  <meta name="description" content="Production-grade RAG pipeline with code-level grounding verification, page citations, and FAISS vector retrieval.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+  <!-- Markdown parser -->
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+  <div class="app-layout">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-container">
+        <div class="brand">
+          <div class="brand-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+              <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+          </div>
+          <div class="brand-text">
+            <h1>Verifiable PDF RAG</h1>
+            <p class="subtitle">Grounded Question Answering with Verifiable Citations</p>
+          </div>
+        </div>
+
+        <div class="header-actions">
+          <div id="system-status-badge" class="status-badge status-idle">
+            <span class="status-dot"></span>
+            <span id="status-text">No Document Loaded</span>
+          </div>
+          <button id="toggle-settings-btn" class="icon-btn" title="Configuration & Settings" aria-label="Settings">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Settings Bar (Collapsible) -->
+    <div id="settings-panel" class="settings-panel hidden">
+      <div class="settings-content">
+        <div class="settings-grid">
+          <div class="setting-field">
+            <label for="groq-api-key-input">Groq API Key (Optional Override)</label>
+            <input type="password" id="groq-api-key-input" placeholder="gsk_... (defaults to server .env)" autocomplete="off">
+          </div>
+          <div class="setting-field">
+            <label for="threshold-input">Grounding Similarity Threshold: <span id="threshold-val">0.35</span></label>
+            <input type="range" id="threshold-input" min="0.10" max="0.80" step="0.05" value="0.35">
+          </div>
+          <div class="setting-info">
+            <p><strong>Model:</strong> <code>llama-3.3-70b-versatile</code></p>
+            <p><strong>Embeddings:</strong> <code>all-MiniLM-L6-v2</code> (384-d, local)</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main Container -->
+    <main class="main-content">
+      <div class="split-container">
+        
+        <!-- Left Sidebar: Document Management & Pipeline Stats -->
+        <aside class="sidebar-panel">
+          <section class="card upload-card">
+            <div class="card-header">
+              <h2>1. Upload Document</h2>
+              <span class="badge badge-subtle">PDF Only</span>
+            </div>
+
+            <div id="dropzone" class="dropzone">
+              <input type="file" id="pdf-file-input" accept=".pdf" class="file-input-hidden">
+              <div class="dropzone-content">
+                <div class="dropzone-icon">
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="17 8 12 3 7 8"></polyline>
+                    <line x1="12" y1="3" x2="12" y2="15"></line>
+                  </svg>
+                </div>
+                <p class="dropzone-title">Drag & drop your PDF here</p>
+                <p class="dropzone-subtitle">or <button type="button" id="browse-btn" class="text-link">browse files</button></p>
+              </div>
+            </div>
+
+            <!-- Upload progress / processing loader -->
+            <div id="upload-spinner" class="processing-state hidden">
+              <div class="spinner"></div>
+              <p id="upload-status-msg">Extracting text & building FAISS index...</p>
+            </div>
+
+            <!-- Document Info Card (Shown when loaded) -->
+            <div id="doc-stats-card" class="doc-stats-card hidden">
+              <div class="doc-title-row">
+                <div class="doc-icon">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                  </svg>
+                </div>
+                <span id="stat-filename" class="doc-filename">document.pdf</span>
+              </div>
+
+              <div class="stats-metrics">
+                <div class="metric-item">
+                  <span class="metric-label">Pages</span>
+                  <span id="stat-pages" class="metric-value">0</span>
+                </div>
+                <div class="metric-item">
+                  <span class="metric-label">Chunks</span>
+                  <span id="stat-chunks" class="metric-value">0</span>
+                </div>
+                <div class="metric-item">
+                  <span class="metric-label">Vector Store</span>
+                  <span class="metric-value text-success">FAISS</span>
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Pipeline Architecture Explainer Card -->
+          <section class="card pipeline-card">
+            <div class="card-header">
+              <h3>Pipeline Flow</h3>
+            </div>
+            <ol class="pipeline-steps">
+              <li>
+                <span class="step-num">1</span>
+                <div>
+                  <strong>Extract</strong>
+                  <p>Page-by-page text via <code>pypdf</code></p>
+                </div>
+              </li>
+              <li>
+                <span class="step-num">2</span>
+                <div>
+                  <strong>Chunk</strong>
+                  <p>500-char blocks with 50-char overlap</p>
+                </div>
+              </li>
+              <li>
+                <span class="step-num">3</span>
+                <div>
+                  <strong>Embed & Index</strong>
+                  <p>Local <code>all-MiniLM-L6-v2</code> & FAISS</p>
+                </div>
+              </li>
+              <li>
+                <span class="step-num">4</span>
+                <div>
+                  <strong>Grounding Check</strong>
+                  <p>Refuses in code if similarity &lt; 0.35</p>
+                </div>
+              </li>
+              <li>
+                <span class="step-num">5</span>
+                <div>
+                  <strong>Generate & Cite</strong>
+                  <p>Groq Llama 3.3 70B with page evidence</p>
+                </div>
+              </li>
+            </ol>
+          </section>
+        </aside>
+
+        <!-- Right Panel: Conversational Q&A -->
+        <section class="chat-panel">
+          <div class="chat-container">
+            
+            <!-- Chat Messages Log -->
+            <div id="chat-messages" class="chat-messages">
+              <!-- Welcome State -->
+              <div id="welcome-message" class="welcome-box">
+                <div class="welcome-icon">
+                  <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <circle cx="12" cy="12" r="10"></circle>
+                    <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                  </svg>
+                </div>
+                <h3>Ask Grounded Questions</h3>
+                <p>Upload any PDF document on the left to begin. Ask any question to get an accurate answer with exact page citations. If a question is outside the document's content, the system will explicitly refuse to answer rather than fabricate.</p>
+              </div>
+            </div>
+
+            <!-- Input Area -->
+            <div class="chat-input-wrapper">
+              <form id="chat-form" class="chat-form">
+                <div class="input-container">
+                  <textarea 
+                    id="question-input" 
+                    placeholder="Ask a question about the uploaded document..." 
+                    rows="1"
+                    disabled
+                  ></textarea>
+                  <button type="submit" id="send-btn" class="send-button" disabled title="Send question">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <line x1="22" y1="2" x2="11" y2="13"></line>
+                      <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
+                  </button>
+                </div>
+                <div class="input-hint">
+                  <span>Press <strong>Enter</strong> to send, <strong>Shift+Enter</strong> for newline</span>
+                  <span id="grounding-info-hint" class="hint-tag">Grounding floor: 0.35</span>
+                </div>
+              </form>
+            </div>
+
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
