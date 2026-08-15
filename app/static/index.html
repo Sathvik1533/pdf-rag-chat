@@ -56,13 +56,27 @@
           <span>Try Sample Document</span>
         </button>
 
-        <button id="export-audit-btn" class="btn btn-ghost btn-sm" title="Export Summary: Download a complete JSON record of your Q&A session, citations, and confidence metrics">
+        <button id="export-audit-btn" class="btn btn-ghost btn-sm" title="Export Studio: Download formal Markdown report, PDF executive brief, or JSON audit record">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
             <polyline points="7 10 12 15 17 10"></polyline>
             <line x1="12" y1="15" x2="12" y2="3"></line>
           </svg>
-          <span>Export Summary</span>
+          <span>Export Studio</span>
+        </button>
+
+        <button id="theme-toggle-btn" class="btn btn-ghost btn-icon" title="Switch Theme (Light Ivory / Dark Obsidian mode)" aria-label="Toggle Theme">
+          <svg id="theme-icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="5"></circle>
+            <line x1="12" y1="1" x2="12" y2="3"></line>
+            <line x1="12" y1="21" x2="12" y2="23"></line>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+            <line x1="1" y1="12" x2="3" y2="12"></line>
+            <line x1="21" y1="12" x2="23" y2="12"></line>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+          </svg>
         </button>
 
         <button id="toggle-config-btn" class="btn btn-ghost btn-icon" title="Engine Settings: Configure fact-checking strictness and API credentials" aria-label="Settings">
@@ -71,6 +85,45 @@
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
           </svg>
         </button>
+      </div>
+    </header>
+
+    <!-- Export Studio Modal -->
+    <div id="export-modal" class="config-drawer hidden" title="Export Studio Modal">
+      <div class="drawer-inner">
+        <div class="drawer-header">
+          <h3>Export Document Intelligence Studio</h3>
+          <button id="close-export-btn" class="btn-close" title="Close Modal">&times;</button>
+        </div>
+        <div class="drawer-body">
+          <div class="export-options-grid">
+            <button type="button" id="btn-export-markdown" class="export-option-card" title="Download formatted markdown executive dossier">
+              <span class="export-opt-icon">📝</span>
+              <div class="export-opt-meta">
+                <strong>Executive Markdown Dossier (.md)</strong>
+                <p>Complete record of all questions, synthesized answers, and page citations.</p>
+              </div>
+            </button>
+
+            <button type="button" id="btn-export-pdf" class="export-option-card" title="Print or save formal PDF executive briefing">
+              <span class="export-opt-icon">📄</span>
+              <div class="export-opt-meta">
+                <strong>Formal PDF Executive Brief</strong>
+                <p>Print-ready briefing report formatted for stakeholders and compliance audits.</p>
+              </div>
+            </button>
+
+            <button type="button" id="btn-export-json" class="export-option-card" title="Download raw JSON audit trail with vector metrics">
+              <span class="export-opt-icon">🗂️</span>
+              <div class="export-opt-meta">
+                <strong>JSON Audit Trail & Telemetry (.json)</strong>
+                <p>Technical log containing cosine similarity matrices and retrieval latency logs.</p>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
       </div>
     </header>
 
@@ -146,6 +199,16 @@
                 </svg>
                 <span>Sections</span>
               </button>
+              <button id="tab-graph-view" class="tab-btn" data-tab="knowledge-graph" title="Knowledge Graph: Interactive neural node map of document topics and sections">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="18" cy="5" r="3"></circle>
+                  <circle cx="6" cy="12" r="3"></circle>
+                  <circle cx="18" cy="19" r="3"></circle>
+                  <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+                  <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+                </svg>
+                <span>Graph</span>
+              </button>
               <button id="tab-diag-view" class="tab-btn" data-tab="diagnostics" title="Grounding Meter: Real-time radar showing retrieval confidence score vs refusal threshold">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <line x1="18" y1="20" x2="18" y2="10"></line>
@@ -193,6 +256,10 @@
             <div class="meta-pill" title="Total searchable vector chunks created">
               <span class="meta-label">Chunks:</span>
               <span id="meta-chunks" class="meta-value">0</span>
+            </div>
+            <div class="meta-pill" title="Estimated reading time">
+              <span class="meta-label">Read Time:</span>
+              <span id="meta-readtime" class="meta-value">~1 min</span>
             </div>
             <div class="meta-pill" title="Ready to answer questions with verified citations">
               <span class="meta-label">Status:</span>
@@ -264,7 +331,7 @@
           </div>
         </div>
 
-        <!-- Tab 2: Document Sections (Knowledge Map) -->
+        <!-- Tab 3: Document Sections (Knowledge Map) -->
         <div id="panel-vector-map" class="tab-panel" title="Document Sections View">
           <div class="vector-map-card">
             <div class="vector-map-header">
@@ -273,6 +340,20 @@
             </div>
             <div id="chunks-list" class="chunks-list" title="List of searchable sections with character counts and page numbers">
               <p class="no-doc-hint">No document uploaded yet.</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 4: Interactive Knowledge Graph -->
+        <div id="panel-knowledge-graph" class="tab-panel" title="Knowledge Graph View">
+          <div class="graph-panel-card">
+            <div class="graph-header">
+              <span class="section-label">Interactive Document Entity & Concept Graph</span>
+              <span class="badge-mono" id="graph-nodes-count">Physics Graph</span>
+            </div>
+            <div class="graph-canvas-container">
+              <canvas id="knowledge-graph-canvas"></canvas>
+              <div class="graph-overlay-hint">Drag nodes &bull; Click any section bubble to jump to document</div>
             </div>
           </div>
         </div>
@@ -365,6 +446,14 @@
           <div class="composer-container" title="Question input composer">
             <form id="composer-form" class="composer-form">
               <div class="composer-box" title="Question input field">
+                <button type="button" id="btn-voice-dictate" class="btn-dictate" title="Voice Input: Speak your question via speech recognition">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                    <line x1="12" y1="19" x2="12" y2="23"></line>
+                    <line x1="8" y1="23" x2="16" y2="23"></line>
+                  </svg>
+                </button>
                 <textarea 
                   id="composer-input" 
                   class="composer-textarea"
@@ -383,7 +472,7 @@
               </div>
 
               <div class="composer-footer">
-                <span class="footer-hint" title="Keyboard shortcuts">Press <strong>Enter</strong> to send &bull; <strong>Shift+Enter</strong> for newline</span>
+                <span class="footer-hint" title="Keyboard shortcuts">Press <strong>Enter</strong> to send &bull; <strong>Shift+Enter</strong> for newline &bull; <strong>Cmd+K</strong> focus</span>
                 <span class="footer-guarantee" title="System guarantee">✓ Grounded Synthesis &bull; Exact Page Citations</span>
               </div>
             </form>

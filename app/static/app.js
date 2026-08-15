@@ -51,6 +51,23 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentDossier = null;
   let conversationHistory = [];
 
+  // --------------------------------------------------------------------------
+  // Theme Toggle (Light Ivory / Dark Obsidian)
+  // --------------------------------------------------------------------------
+  const themeToggleBtn = document.getElementById('theme-toggle-btn');
+  const savedTheme = localStorage.getItem('veritas_theme');
+  if (savedTheme === 'dark') {
+    document.body.classList.add('theme-dark');
+  }
+
+  if (themeToggleBtn) {
+    themeToggleBtn.addEventListener('click', () => {
+      document.body.classList.toggle('theme-dark');
+      const isDark = document.body.classList.contains('theme-dark');
+      localStorage.setItem('veritas_theme', isDark ? 'dark' : 'light');
+    });
+  }
+
   // Check initial status
   refreshEngineStatus();
 
@@ -61,6 +78,9 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.addEventListener('click', () => {
       const tabId = btn.getAttribute('data-tab');
       activateTab(tabId);
+      if (tabId === 'knowledge-graph' && currentDossier) {
+        setTimeout(() => initKnowledgeGraph(currentDossier), 50);
+      }
     });
   });
 
@@ -370,6 +390,14 @@ document.addEventListener('DOMContentLoaded', () => {
   function renderDocumentDossier(dossier) {
     if (!dossier || !dossier.pages) return;
 
+    // Calculate Reading Time & Total Words
+    let totalChars = 0;
+    dossier.pages.forEach(p => totalChars += (p.text ? p.text.length : 0));
+    const estWords = Math.ceil(totalChars / 5.5);
+    const estReadTimeMin = Math.max(1, Math.ceil(estWords / 200));
+    const metaReadTimeEl = document.getElementById('meta-readtime');
+    if (metaReadTimeEl) metaReadTimeEl.textContent = `~${estReadTimeMin} min read (${estWords} words)`;
+
     // 1. Render Page Navigation Pills
     readerPagePills.innerHTML = '';
     dossier.pages.forEach(p => {
@@ -418,8 +446,262 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     }
 
+    // Initialize Knowledge Graph
+    initKnowledgeGraph(dossier);
+
     // Default activate document viewer tab
     activateTab('doc-viewer');
+  }
+
+  // --------------------------------------------------------------------------
+  // Interactive Knowledge Graph Canvas Simulation
+  // --------------------------------------------------------------------------
+  const graphCanvas = document.getElementById('knowledge-graph-canvas');
+  let graphNodes = [];
+  let graphAnimationId = null;
+
+  function initKnowledgeGraph(dossier) {
+    if (!graphCanvas || !dossier || !dossier.pages) return;
+    const ctx = graphCanvas.getContext('2d');
+    const container = graphCanvas.parentElement;
+    graphCanvas.width = container.clientWidth || 380;
+    graphCanvas.height = container.clientHeight || 340;
+
+    const centerX = graphCanvas.width / 2;
+    const centerY = graphCanvas.height / 2;
+
+    const rootName = dossier.filename ? (dossier.filename.length > 14 ? dossier.filename.substring(0, 11) + '...' : dossier.filename) : 'Doc Root';
+
+    graphNodes = [
+      {
+        id: 'doc-center',
+        label: rootName,
+        x: centerX,
+        y: centerY,
+        radius: 24,
+        color: '#3b82f6',
+        isCenter: true,
+        page: 1
+      }
+    ];
+
+    dossier.pages.forEach((p, idx) => {
+      const angle = (idx / dossier.pages.length) * Math.PI * 2;
+      const dist = 75 + (idx % 2) * 25;
+      const label = p.label || `Sec ${p.page}`;
+      graphNodes.push({
+        id: `section-${p.page}`,
+        label: label.length > 12 ? label.substring(0, 10) + '..' : label,
+        x: centerX + Math.cos(angle) * dist,
+        y: centerY + Math.sin(angle) * dist,
+        radius: 17,
+        color: '#10b981',
+        isCenter: false,
+        page: p.page
+      });
+    });
+
+    const graphCountEl = document.getElementById('graph-nodes-count');
+    if (graphCountEl) graphCountEl.textContent = `${graphNodes.length} Nodes`;
+
+    if (graphAnimationId) cancelAnimationFrame(graphAnimationId);
+    animateKnowledgeGraph();
+  }
+
+  function animateKnowledgeGraph() {
+    if (!graphCanvas) return;
+    const ctx = graphCanvas.getContext('2d');
+    ctx.clearRect(0, 0, graphCanvas.width, graphCanvas.height);
+
+    if (graphNodes.length > 0) {
+      const centerNode = graphNodes[0];
+
+      // Draw connecting lines
+      for (let i = 1; i < graphNodes.length; i++) {
+        const node = graphNodes[i];
+        ctx.beginPath();
+        ctx.moveTo(centerNode.x, centerNode.y);
+        ctx.lineTo(node.x, node.y);
+        ctx.strokeStyle = 'rgba(59, 130, 246, 0.3)';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+      }
+
+      // Draw Nodes
+      graphNodes.forEach(node => {
+        ctx.beginPath();
+        ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
+        ctx.fillStyle = node.color;
+        ctx.fill();
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+
+        ctx.fillStyle = '#ffffff';
+        ctx.font = node.isCenter ? 'bold 9px Plus Jakarta Sans, sans-serif' : '8px Plus Jakarta Sans, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(node.label, node.x, node.y);
+      });
+    }
+
+    graphAnimationId = requestAnimationFrame(animateKnowledgeGraph);
+  }
+
+  if (graphCanvas) {
+    graphCanvas.addEventListener('click', (e) => {
+      const rect = graphCanvas.getBoundingClientRect();
+      const clickX = e.clientX - rect.left;
+      const clickY = e.clientY - rect.top;
+
+      for (let i = 1; i < graphNodes.length; i++) {
+        const node = graphNodes[i];
+        const dist = Math.hypot(clickX - node.x, clickY - node.y);
+        if (dist <= node.radius + 5) {
+          scrollToPage(node.page);
+          break;
+        }
+      }
+    });
+  }
+
+  // --------------------------------------------------------------------------
+  // Voice Speech Dictation (Speech-to-Text)
+  // --------------------------------------------------------------------------
+  const btnVoiceDictate = document.getElementById('btn-voice-dictate');
+  if (btnVoiceDictate) {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = false;
+      recognition.lang = 'en-US';
+
+      recognition.onstart = () => {
+        btnVoiceDictate.classList.add('listening');
+      };
+      recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        if (transcript) {
+          composerInput.value = transcript;
+          composerForm.dispatchEvent(new Event('submit'));
+        }
+      };
+      recognition.onerror = () => {
+        btnVoiceDictate.classList.remove('listening');
+      };
+      recognition.onend = () => {
+        btnVoiceDictate.classList.remove('listening');
+      };
+
+      btnVoiceDictate.addEventListener('click', () => {
+        if (btnVoiceDictate.classList.contains('listening')) {
+          recognition.stop();
+        } else {
+          try {
+            recognition.start();
+          } catch (e) {
+            console.warn(e);
+          }
+        }
+      });
+    } else {
+      btnVoiceDictate.title = 'Speech recognition not supported in this browser';
+      btnVoiceDictate.style.opacity = '0.4';
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // Export Studio Modal Handlers
+  // --------------------------------------------------------------------------
+  const exportModal = document.getElementById('export-modal');
+  const closeExportBtn = document.getElementById('close-export-btn');
+  const btnExportMarkdown = document.getElementById('btn-export-markdown');
+  const btnExportPdf = document.getElementById('btn-export-pdf');
+  const btnExportJson = document.getElementById('btn-export-json');
+
+  if (exportAuditBtn) {
+    exportAuditBtn.addEventListener('click', () => {
+      if (exportModal) exportModal.classList.remove('hidden');
+    });
+  }
+  if (closeExportBtn) {
+    closeExportBtn.addEventListener('click', () => {
+      if (exportModal) exportModal.classList.add('hidden');
+    });
+  }
+  if (btnExportMarkdown) {
+    btnExportMarkdown.addEventListener('click', () => {
+      exportMarkdownReport();
+      if (exportModal) exportModal.classList.add('hidden');
+    });
+  }
+  if (btnExportPdf) {
+    btnExportPdf.addEventListener('click', () => {
+      window.print();
+      if (exportModal) exportModal.classList.add('hidden');
+    });
+  }
+  if (btnExportJson) {
+    btnExportJson.addEventListener('click', () => {
+      exportJsonAudit();
+      if (exportModal) exportModal.classList.add('hidden');
+    });
+  }
+
+  function exportMarkdownReport() {
+    if (conversationHistory.length === 0) {
+      alert('Ask at least one question first to generate an executive report.');
+      return;
+    }
+    const docName = currentDossier ? currentDossier.filename : "Document";
+    let md = `# Veritas Executive Intelligence Report\n\n`;
+    md += `**Target Document:** ${docName}\n`;
+    md += `**Generated Date:** ${new Date().toLocaleString()}\n`;
+    md += `**Factual Guarantee:** Verifiable Multi-Page Grounding Floor (0.35)\n\n---\n\n`;
+
+    conversationHistory.forEach((item, idx) => {
+      md += `### ${idx + 1}. ${item.query}\n\n`;
+      md += `${item.response.answer}\n\n`;
+      if (item.response.citations && item.response.citations.length > 0) {
+        md += `**Verified Citations:**\n`;
+        item.response.citations.forEach(c => {
+          const lbl = c.unit_label || `Page ${c.page}`;
+          md += `- **[${lbl}]** (${(c.similarity_score * 100).toFixed(0)}% match): "${c.excerpt}"\n`;
+        });
+        md += `\n`;
+      }
+      md += `---\n\n`;
+    });
+
+    const blob = new Blob([md], { type: 'text/markdown' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `veritas_report_${Date.now()}.md`;
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  function exportJsonAudit() {
+    if (conversationHistory.length === 0) {
+      alert('Ask a question first to export audit logs.');
+      return;
+    }
+    const payload = {
+      engine: "Veritas Grounded Document Assistant",
+      exported_at: new Date().toISOString(),
+      document: currentDossier ? currentDossier.filename : null,
+      total_sections: currentDossier ? currentDossier.total_pages : 0,
+      sessions: conversationHistory
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `veritas_audit_${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
   }
 
   function scrollToPage(pageNum, highlightSnippet = null) {
