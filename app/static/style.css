@@ -553,12 +553,45 @@ body {
 }
 
 .reader-toolbar {
-  padding: 0.65rem 0.85rem;
+  padding: 0.5rem 0.85rem;
   background: var(--bg-card);
   border-bottom: 1px solid var(--border-subtle);
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.reader-search-box {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: var(--bg-card-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  padding: 0.2rem 0.5rem;
+  color: var(--text-muted);
+}
+
+.reader-search-input {
+  border: none;
+  background: transparent;
+  font-family: var(--font-family);
+  font-size: 0.725rem;
+  color: var(--text-main);
+  outline: none;
+  width: 120px;
+}
+
+.reader-search-input:focus {
+  width: 150px;
+}
+
+.reader-search-count {
+  font-size: 0.65rem;
+  font-family: var(--font-mono);
+  color: var(--primary);
+  font-weight: 600;
 }
 
 .reader-label {
@@ -571,6 +604,97 @@ body {
 .page-pills {
   display: flex;
   gap: 0.35rem;
+  overflow-x: auto;
+}
+
+/* Executive Presets Card */
+.presets-panel-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+
+.presets-header {
+  padding: 0.65rem 0.85rem;
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-card-subtle);
+}
+
+.presets-grid {
+  padding: 0.85rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  overflow-y: auto;
+}
+
+.preset-card {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 0.75rem 0.85rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.15s ease;
+}
+
+.preset-card:hover {
+  background: var(--bg-card-subtle);
+  border-color: var(--primary);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-card);
+}
+
+.preset-icon {
+  font-size: 1.2rem;
+}
+
+.preset-meta strong {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--text-main);
+  margin-bottom: 0.15rem;
+}
+
+.preset-meta p {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  line-height: 1.35;
+}
+
+/* Speak & Audio Buttons */
+.speak-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.25rem 0.55rem;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--bg-card-subtle);
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.speak-btn:hover {
+  background: var(--primary);
+  color: #ffffff;
+  border-color: var(--primary);
+}
+
+.speak-btn.speaking {
+  background: hsl(0, 70%, 55%);
+  color: #ffffff;
+  border-color: hsl(0, 70%, 55%);
 }
 
 .page-pill-btn {

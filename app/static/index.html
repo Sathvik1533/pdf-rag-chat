@@ -132,13 +132,19 @@
                 </svg>
                 <span>Read Document</span>
               </button>
-              <button id="tab-vector-view" class="tab-btn" data-tab="vector-map" title="Document Sections: Inspect the individual indexed text chunks and token lengths">
+              <button id="tab-presets-view" class="tab-btn" data-tab="executive-presets" title="Executive Presets: 1-click strategic summaries, financials, and risk extractions">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+                </svg>
+                <span>Executive Presets</span>
+              </button>
+              <button id="tab-vector-view" class="tab-btn" data-tab="vector-map" title="Document Sections: Inspect individual indexed text chunks and token lengths">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
                   <polyline points="2 17 12 22 22 17"></polyline>
                   <polyline points="2 12 12 17 22 12"></polyline>
                 </svg>
-                <span>Document Sections</span>
+                <span>Sections</span>
               </button>
               <button id="tab-diag-view" class="tab-btn" data-tab="diagnostics" title="Grounding Meter: Real-time radar showing retrieval confidence score vs refusal threshold">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -146,7 +152,7 @@
                   <line x1="12" y1="20" x2="12" y2="4"></line>
                   <line x1="6" y1="20" x2="6" y2="14"></line>
                 </svg>
-                <span>Grounding Meter</span>
+                <span>Grounding</span>
               </button>
             </div>
           </div>
@@ -198,8 +204,12 @@
         <!-- Tab 1: Interactive Document Reader -->
         <div id="panel-doc-viewer" class="tab-panel active" title="Document Reader View">
           <div class="doc-reader-card">
-            <div class="reader-toolbar" title="Navigate directly between sections">
-              <span class="reader-label">Jump to Section:</span>
+            <div class="reader-toolbar" title="Search and navigate directly between sections">
+              <div class="reader-search-box">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <input type="text" id="reader-search-input" placeholder="Find in document..." class="reader-search-input" title="Filter matching passages in real-time">
+                <span id="reader-search-count" class="reader-search-count"></span>
+              </div>
               <div id="reader-page-pills" class="page-pills" title="Click a pill to scroll directly to that section">
                 <span class="no-doc-hint">Upload any file to view content</span>
               </div>
@@ -208,6 +218,48 @@
               <div class="reader-empty">
                 <p>Upload any PDF, Word doc, spreadsheet, slide deck, JSON, code, or text file to inspect sections here and see matching evidence highlighted when you chat.</p>
               </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 2: Executive Intelligence Presets -->
+        <div id="panel-executive-presets" class="tab-panel" title="Executive Presets View">
+          <div class="presets-panel-card">
+            <div class="presets-header">
+              <span class="section-label">1-Click Executive Syntheses</span>
+            </div>
+            <div class="presets-grid">
+              <button type="button" class="preset-card" id="btn-veritas-brief" title="Generate an executive strategic briefing">
+                <div class="preset-icon icon-gold">⚡</div>
+                <div class="preset-meta">
+                  <strong>Executive Summary Brief</strong>
+                  <p>Synthesize strategic mandate, core goals, and primary takeaways.</p>
+                </div>
+              </button>
+
+              <button type="button" class="preset-card" id="btn-veritas-metrics" title="Extract key numerical metrics, financials, and KPIs into a table">
+                <div class="preset-icon icon-emerald">📊</div>
+                <div class="preset-meta">
+                  <strong>Key Metrics & Financials</strong>
+                  <p>Extract numerical figures, budgets, and measurable milestones into a structured table.</p>
+                </div>
+              </button>
+
+              <button type="button" class="preset-card" id="btn-veritas-risks" title="Identify operational constraints, circuit breakers, and delivery schedules">
+                <div class="preset-icon icon-amber">🛡️</div>
+                <div class="preset-meta">
+                  <strong>Risks & Milestone Timelines</strong>
+                  <p>Identify operational constraints, failure risks, and delivery schedules.</p>
+                </div>
+              </button>
+
+              <button type="button" class="preset-card" id="btn-veritas-qa" title="Generate comprehensive study questions and answers">
+                <div class="preset-icon icon-purple">🔍</div>
+                <div class="preset-meta">
+                  <strong>Q&A Study Flashcards</strong>
+                  <p>Generate essential test questions and grounded answers based on document content.</p>
+                </div>
+              </button>
             </div>
           </div>
         </div>

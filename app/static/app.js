@@ -229,6 +229,8 @@ document.addEventListener('DOMContentLoaded', () => {
       starterChips.classList.remove('hidden');
       if (emptyState) emptyState.classList.add('hidden');
 
+      updateSmartStarterChips(data.filename);
+
       appendNotice(`📄 **"${data.filename}" is ready!** ${data.total_pages} sections indexed. Read the document on the left or ask any question below.`);
 
     } catch (err) {
@@ -237,6 +239,129 @@ document.addEventListener('DOMContentLoaded', () => {
       dropzone.classList.remove('hidden');
       appendNotice(`⚠️ **Upload Notice:** ${err.message}`);
     }
+  }
+
+  // --------------------------------------------------------------------------
+  // Category-Aware Smart Starter Chips
+  // --------------------------------------------------------------------------
+  function updateSmartStarterChips(filename) {
+    if (!starterChips) return;
+    starterChips.innerHTML = '';
+    const ext = filename.split('.').pop().toLowerCase();
+    let prompts = [];
+
+    if (['csv', 'tsv', 'xlsx', 'xls'].includes(ext)) {
+      prompts = [
+        "What are the top columns and primary metrics?",
+        "Summarize total rows and numerical findings",
+        "Calculate key totals and growth rates",
+      ];
+    } else if (['py', 'js', 'ts', 'jsx', 'tsx', 'cpp', 'java', 'sql'].includes(ext)) {
+      prompts = [
+        "Explain the main architecture and functions",
+        "List all public APIs and parameters",
+        "Identify potential edge cases or bugs",
+      ];
+    } else if (['pptx', 'ppt'].includes(ext)) {
+      prompts = [
+        "What is the core agenda across the slides?",
+        "What are the strategic action takeaways?",
+        "Summarize the final slide conclusion",
+      ];
+    } else {
+      prompts = [
+        "What is the main objective of this document?",
+        "What are the key figures, budgets, and milestones?",
+        "Summarize the key takeaways and leadership team",
+      ];
+    }
+
+    prompts.forEach(p => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'starter-chip-btn';
+      chip.textContent = p;
+      chip.addEventListener('click', () => {
+        composerInput.value = p;
+        composerForm.dispatchEvent(new Event('submit'));
+      });
+      starterChips.appendChild(chip);
+    });
+  }
+
+  // --------------------------------------------------------------------------
+  // Executive Presets Handlers
+  // --------------------------------------------------------------------------
+  const btnVeritasBrief = document.getElementById('btn-veritas-brief');
+  const btnVeritasMetrics = document.getElementById('btn-veritas-metrics');
+  const btnVeritasRisks = document.getElementById('btn-veritas-risks');
+  const btnVeritasQa = document.getElementById('btn-veritas-qa');
+
+  if (btnVeritasBrief) {
+    btnVeritasBrief.addEventListener('click', () => {
+      composerInput.value = "Provide an executive strategic briefing summarizing the core mission, major objectives, and key findings.";
+      composerForm.dispatchEvent(new Event('submit'));
+    });
+  }
+  if (btnVeritasMetrics) {
+    btnVeritasMetrics.addEventListener('click', () => {
+      composerInput.value = "Extract all key numerical metrics, financial figures, budgets, and SLAs mentioned in this document into a structured table.";
+      composerForm.dispatchEvent(new Event('submit'));
+    });
+  }
+  if (btnVeritasRisks) {
+    btnVeritasRisks.addEventListener('click', () => {
+      composerInput.value = "Identify all operational risks, circuit breakers, technical constraints, and milestone timelines.";
+      composerForm.dispatchEvent(new Event('submit'));
+    });
+  }
+  if (btnVeritasQa) {
+    btnVeritasQa.addEventListener('click', () => {
+      composerInput.value = "Generate 4 essential study questions and precise grounded answers based on this document.";
+      composerForm.dispatchEvent(new Event('submit'));
+    });
+  }
+
+  // --------------------------------------------------------------------------
+  // Live Document Reader Text Search
+  // --------------------------------------------------------------------------
+  const readerSearchInput = document.getElementById('reader-search-input');
+  const readerSearchCount = document.getElementById('reader-search-count');
+
+  if (readerSearchInput) {
+    readerSearchInput.addEventListener('input', (e) => {
+      const q = e.target.value.trim().toLowerCase();
+      if (!currentDossier || !currentDossier.pages) return;
+
+      if (!q) {
+        readerSearchCount.textContent = '';
+        renderDocumentDossier(currentDossier);
+        return;
+      }
+
+      let totalMatches = 0;
+      currentDossier.pages.forEach(p => {
+        const sheetTextEl = document.getElementById(`page-text-${p.page}`);
+        if (sheetTextEl) {
+          const original = p.text;
+          const regex = new RegExp(`(${escapeRegex(q)})`, 'gi');
+          const matches = original.match(regex);
+          if (matches) {
+            totalMatches += matches.length;
+            const highlighted = original.replace(regex, '<mark class="passage-highlight">$1</mark>');
+            sheetTextEl.innerHTML = highlighted;
+          } else {
+            sheetTextEl.textContent = original;
+          }
+        }
+      });
+      readerSearchCount.textContent = totalMatches > 0 ? `${totalMatches} found` : '0 found';
+    });
+  }
+
+  function escapeRegex(string) {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  }
   }
 
   // --------------------------------------------------------------------------
@@ -534,32 +659,41 @@ document.addEventListener('DOMContentLoaded', () => {
       bubble.appendChild(deck);
     }
 
-    // Copy Action
-    const actions = document.createElement('div');
-    actions.className = 'bubble-actions';
-    const copyBtn = document.createElement('button');
-    copyBtn.className = 'copy-btn';
-    copyBtn.innerHTML = `
+    // Read Aloud / Audio Synthesis Button
+    const speakBtn = document.createElement('button');
+    speakBtn.className = 'speak-btn';
+    speakBtn.title = 'Listen: Speak answer aloud using neural voice synthesis';
+    speakBtn.innerHTML = `
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+        <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+        <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
       </svg>
-      <span>Copy Answer</span>
+      <span>Read Aloud</span>
     `;
-    copyBtn.addEventListener('click', () => {
-      navigator.clipboard.writeText(data.answer).then(() => {
-        copyBtn.innerHTML = '<span>✓ Copied!</span>';
-        setTimeout(() => {
-          copyBtn.innerHTML = `
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-              <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
-            </svg>
-            <span>Copy Answer</span>
-          `;
-        }, 2000);
-      });
+    speakBtn.addEventListener('click', () => {
+      if ('speechSynthesis' in window) {
+        if (window.speechSynthesis.speaking) {
+          window.speechSynthesis.cancel();
+          speakBtn.classList.remove('speaking');
+          speakBtn.querySelector('span').textContent = 'Read Aloud';
+        } else {
+          const plainText = data.answer.replace(/[*_#`[\]()]/g, '');
+          const utterance = new SpeechSynthesisUtterance(plainText);
+          utterance.rate = 1.05;
+          utterance.onend = () => {
+            speakBtn.classList.remove('speaking');
+            speakBtn.querySelector('span').textContent = 'Read Aloud';
+          };
+          window.speechSynthesis.speak(utterance);
+          speakBtn.classList.add('speaking');
+          speakBtn.querySelector('span').textContent = 'Stop Audio';
+        }
+      } else {
+        alert('Voice synthesis is not supported in this browser.');
+      }
     });
+
+    actions.appendChild(speakBtn);
     actions.appendChild(copyBtn);
     bubble.appendChild(actions);
 
@@ -747,4 +881,28 @@ document.addEventListener('DOMContentLoaded', () => {
     tooltipEl.style.top = `${Math.round(top)}px`;
     tooltipEl.style.left = `${Math.round(left)}px`;
   }
+
+  // --------------------------------------------------------------------------
+  // Global Keyboard Shortcuts (Cmd/Ctrl + K, Esc)
+  // --------------------------------------------------------------------------
+  document.addEventListener('keydown', (e) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      e.preventDefault();
+      if (!composerInput.disabled) {
+        composerInput.focus();
+      }
+    }
+    if (e.key === 'Escape') {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+      document.querySelectorAll('.speak-btn.speaking').forEach(b => {
+        b.classList.remove('speaking');
+        b.querySelector('span').textContent = 'Read Aloud';
+      });
+      document.querySelectorAll('.passage-highlight').forEach(el => {
+        el.classList.remove('passage-highlight');
+      });
+    }
+  });
 });
