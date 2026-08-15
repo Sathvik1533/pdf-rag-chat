@@ -472,50 +472,82 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // --------------------------------------------------------------------------
-  // Interactive Knowledge Graph Canvas Simulation
+  // Interactive Document Entity & Concept Graph (Physics + Drag-and-Drop)
   // --------------------------------------------------------------------------
   const graphCanvas = document.getElementById('knowledge-graph-canvas');
   let graphNodes = [];
   let graphAnimationId = null;
+  let draggedNode = null;
+  let dragStartX = 0;
+  let dragStartY = 0;
+  let hasDragged = false;
+  let hoveredNode = null;
+
+  function extractTopicHeadline(text, fallback) {
+    if (!text) return fallback;
+    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 2);
+    for (const line of lines) {
+      if (line.length >= 3 && line.length <= 32 && !line.startsWith('http') && !line.startsWith('---')) {
+        return line;
+      }
+    }
+    return fallback;
+  }
 
   function initKnowledgeGraph(dossier) {
     if (!graphCanvas || !dossier || !dossier.pages) return;
-    const ctx = graphCanvas.getContext('2d');
     const container = graphCanvas.parentElement;
-    graphCanvas.width = container.clientWidth || 380;
-    graphCanvas.height = container.clientHeight || 340;
+    const width = container.clientWidth || 400;
+    const height = Math.max(container.clientHeight || 360, 360);
 
-    const centerX = graphCanvas.width / 2;
-    const centerY = graphCanvas.height / 2;
+    const dpr = window.devicePixelRatio || 1;
+    graphCanvas.width = width * dpr;
+    graphCanvas.height = height * dpr;
+    graphCanvas.style.width = width + 'px';
+    graphCanvas.style.height = height + 'px';
 
-    const rootName = dossier.filename ? (dossier.filename.length > 14 ? dossier.filename.substring(0, 11) + '...' : dossier.filename) : 'Doc Root';
+    const ctx = graphCanvas.getContext('2d');
+    ctx.scale(dpr, dpr);
+
+    const centerX = width / 2;
+    const centerY = height / 2;
+
+    const rootName = dossier.filename ? (dossier.filename.length > 16 ? dossier.filename.substring(0, 13) + '...' : dossier.filename) : 'Document';
 
     graphNodes = [
       {
         id: 'doc-center',
         label: rootName,
+        fullLabel: dossier.filename || 'Document Root',
         x: centerX,
         y: centerY,
-        radius: 24,
-        color: '#3b82f6',
+        radius: 28,
+        color: '#2563eb',
         isCenter: true,
-        page: 1
+        page: 1,
+        snippet: `${dossier.total_pages || 1} sections indexed`
       }
     ];
 
+    const nodeColors = ['#059669', '#0284c7', '#7c3aed', '#d97706', '#dc2626', '#0d9488', '#4f46e5'];
+
     dossier.pages.forEach((p, idx) => {
       const angle = (idx / dossier.pages.length) * Math.PI * 2;
-      const dist = 75 + (idx % 2) * 25;
-      const label = p.label || `Sec ${p.page}`;
+      const dist = Math.min(width, height) * 0.35 + (idx % 2 === 0 ? 0 : 20);
+      const headline = extractTopicHeadline(p.text, p.label || `Section ${p.page}`);
+      const color = nodeColors[idx % nodeColors.length];
+
       graphNodes.push({
         id: `section-${p.page}`,
-        label: label.length > 12 ? label.substring(0, 10) + '..' : label,
+        label: headline.length > 16 ? headline.substring(0, 14) + '..' : headline,
+        fullLabel: headline,
         x: centerX + Math.cos(angle) * dist,
         y: centerY + Math.sin(angle) * dist,
-        radius: 17,
-        color: '#10b981',
+        radius: 22,
+        color: color,
         isCenter: false,
-        page: p.page
+        page: p.page,
+        snippet: p.text ? p.text.substring(0, 90).replace(/\s+/g, ' ') + '...' : ''
       });
     });
 
@@ -529,56 +561,135 @@ document.addEventListener('DOMContentLoaded', () => {
   function animateKnowledgeGraph() {
     if (!graphCanvas) return;
     const ctx = graphCanvas.getContext('2d');
-    ctx.clearRect(0, 0, graphCanvas.width, graphCanvas.height);
+    const width = parseFloat(graphCanvas.style.width) || graphCanvas.width;
+    const height = parseFloat(graphCanvas.style.height) || graphCanvas.height;
+
+    ctx.clearRect(0, 0, width, height);
 
     if (graphNodes.length > 0) {
       const centerNode = graphNodes[0];
 
-      // Draw connecting lines
+      // Draw connecting filaments with gradients
       for (let i = 1; i < graphNodes.length; i++) {
         const node = graphNodes[i];
         ctx.beginPath();
         ctx.moveTo(centerNode.x, centerNode.y);
         ctx.lineTo(node.x, node.y);
-        ctx.strokeStyle = 'rgba(59, 130, 246, 0.3)';
-        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = (hoveredNode === node || draggedNode === node) ? 'rgba(37, 99, 235, 0.65)' : 'rgba(148, 163, 184, 0.35)';
+        ctx.lineWidth = (hoveredNode === node || draggedNode === node) ? 2.5 : 1.5;
         ctx.stroke();
       }
 
       // Draw Nodes
       graphNodes.forEach(node => {
+        const isHovered = hoveredNode === node || draggedNode === node;
+
+        // Outer glow
+        ctx.save();
+        if (isHovered) {
+          ctx.shadowColor = node.color;
+          ctx.shadowBlur = 14;
+        }
+
+        // Circle fill
         ctx.beginPath();
         ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
         ctx.fillStyle = node.color;
         ctx.fill();
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 1.5;
-        ctx.stroke();
 
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = isHovered ? 2.5 : 1.5;
+        ctx.stroke();
+        ctx.restore();
+
+        // Label pill background for crisp readability
+        ctx.save();
+        ctx.font = node.isCenter ? 'bold 10px Plus Jakarta Sans, sans-serif' : '500 9px Plus Jakarta Sans, sans-serif';
+        const textMetrics = ctx.measureText(node.label);
+        const textWidth = textMetrics.width;
+
+        // Pill behind text
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
+        const pillH = 14;
+        const pillW = textWidth + 8;
+        ctx.beginPath();
+        ctx.roundRect(node.x - pillW / 2, node.y - pillH / 2, pillW, pillH, 4);
+        ctx.fill();
+
+        // Text
         ctx.fillStyle = '#ffffff';
-        ctx.font = node.isCenter ? 'bold 9px Plus Jakarta Sans, sans-serif' : '8px Plus Jakarta Sans, sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
         ctx.fillText(node.label, node.x, node.y);
+        ctx.restore();
       });
     }
 
     graphAnimationId = requestAnimationFrame(animateKnowledgeGraph);
   }
 
+  // Interactive mouse drag & jump events
   if (graphCanvas) {
-    graphCanvas.addEventListener('click', (e) => {
+    function getCanvasMousePos(e) {
       const rect = graphCanvas.getBoundingClientRect();
-      const clickX = e.clientX - rect.left;
-      const clickY = e.clientY - rect.top;
+      return {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top
+      };
+    }
 
-      for (let i = 1; i < graphNodes.length; i++) {
+    graphCanvas.addEventListener('mousedown', (e) => {
+      const pos = getCanvasMousePos(e);
+      for (let i = 0; i < graphNodes.length; i++) {
         const node = graphNodes[i];
-        const dist = Math.hypot(clickX - node.x, clickY - node.y);
-        if (dist <= node.radius + 5) {
-          scrollToPage(node.page);
+        const dist = Math.hypot(pos.x - node.x, pos.y - node.y);
+        if (dist <= node.radius + 6) {
+          draggedNode = node;
+          dragStartX = pos.x;
+          dragStartY = pos.y;
+          hasDragged = false;
+          graphCanvas.style.cursor = 'grabbing';
           break;
         }
+      }
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!graphCanvas) return;
+      const pos = getCanvasMousePos(e);
+
+      if (draggedNode) {
+        if (Math.hypot(pos.x - dragStartX, pos.y - dragStartY) > 4) {
+          hasDragged = true;
+        }
+        draggedNode.x = Math.max(draggedNode.radius, Math.min((parseFloat(graphCanvas.style.width) || graphCanvas.width) - draggedNode.radius, pos.x));
+        draggedNode.y = Math.max(draggedNode.radius, Math.min((parseFloat(graphCanvas.style.height) || graphCanvas.height) - draggedNode.radius, pos.y));
+        return;
+      }
+
+      // Check hover
+      let found = null;
+      for (let i = 0; i < graphNodes.length; i++) {
+        const node = graphNodes[i];
+        const dist = Math.hypot(pos.x - node.x, pos.y - node.y);
+        if (dist <= node.radius + 6) {
+          found = node;
+          break;
+        }
+      }
+      hoveredNode = found;
+      graphCanvas.style.cursor = found ? 'grab' : 'default';
+    });
+
+    window.addEventListener('mouseup', () => {
+      if (draggedNode) {
+        if (!hasDragged && draggedNode.page) {
+          // It was a click, not a drag: jump to section!
+          scrollToPage(draggedNode.page);
+        }
+        draggedNode = null;
+        hasDragged = false;
+        if (graphCanvas) graphCanvas.style.cursor = hoveredNode ? 'grab' : 'default';
       }
     });
   }

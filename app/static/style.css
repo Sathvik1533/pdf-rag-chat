@@ -430,27 +430,34 @@ body {
 
 .dossier-tabs {
   display: flex;
-  gap: 0.35rem;
+  gap: 0.2rem;
   background: var(--bg-card-subtle);
-  padding: 0.25rem;
+  padding: 0.2rem;
   border-radius: var(--r-sm);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.dossier-tabs::-webkit-scrollbar {
+  display: none;
 }
 
 .tab-btn {
-  flex: 1;
+  flex: 1 1 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  gap: 0.35rem;
+  gap: 0.25rem;
   background: transparent;
   border: none;
-  padding: 0.35rem 0.5rem;
+  padding: 0.35rem 0.35rem;
   font-family: var(--font-family);
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 600;
   color: var(--text-secondary);
   border-radius: 4px;
   cursor: pointer;
+  white-space: nowrap;
   transition: all 0.15s ease;
 }
 
