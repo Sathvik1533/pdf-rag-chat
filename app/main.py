@@ -104,7 +104,7 @@ class StatusResponse(BaseModel):
 # -----------------------------------------------------------------------------
 # API Endpoints
 # -----------------------------------------------------------------------------
-@app.get("/health", tags=["System"])
+@app.api_route("/health", methods=["GET", "HEAD"], tags=["System"])
 async def health_check():
     """Health check endpoint for Render and uptime monitoring."""
     return {"status": "ok", "app": settings.APP_NAME, "version": settings.APP_VERSION}
@@ -231,7 +231,7 @@ async def chat_with_document(req: ChatRequest):
 if STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
-    @app.get("/", include_in_schema=False)
+    @app.api_route("/", methods=["GET", "HEAD"], include_in_schema=False)
     async def serve_ui():
         index_file = STATIC_DIR / "index.html"
         if index_file.exists():
