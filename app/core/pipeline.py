@@ -129,7 +129,7 @@ class RAGPipeline:
 
     @property
     def embedder(self):
-        """Lazy-load the embedding model on first use so server boots instantly with 0 memory spike."""
+        """Lazy-load the embedding model on first use with minimal CPU memory footprint."""
         if self._embedder is None:
             import os
             os.environ["TOKENIZERS_PARALLELISM"] = "false"
@@ -142,10 +142,7 @@ class RAGPipeline:
                 except RuntimeError:
                     pass
             logger.info(f"Loading embedding model: {self.embedding_model_name} on CPU...")
-            try:
-                self._embedder = SentenceTransformer(self.embedding_model_name, device="cpu", local_files_only=True)
-            except Exception:
-                self._embedder = SentenceTransformer(self.embedding_model_name, device="cpu")
+            self._embedder = SentenceTransformer(self.embedding_model_name, device="cpu")
 
             if hasattr(self._embedder, "get_embedding_dimension"):
                 self.embedding_dim = self._embedder.get_embedding_dimension()
