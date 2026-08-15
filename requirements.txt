@@ -1,0 +1,24 @@
+# Backend & Web Framework
+fastapi>=0.115.0
+uvicorn[standard]>=0.30.0
+python-multipart>=0.0.9
+python-dotenv>=1.0.1
+pydantic>=2.7.0
+
+# PDF Extraction & Document Processing
+pypdf>=5.0.0
+langchain-text-splitters>=0.2.0
+
+# Local Embeddings & Vector Search (No external embedding API needed)
+sentence-transformers>=3.0.0
+faiss-cpu>=1.8.0
+torch>=2.0.0
+numpy>=1.24.0
+
+# LLM Generation via Groq (Ultra-fast inference with Llama 3.3 70B)
+groq>=0.11.0
+
+# Testing & Utilities
+requests>=2.31.0
+pytest>=8.0.0
+httpx>=0.27.0
