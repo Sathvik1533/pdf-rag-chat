@@ -1194,6 +1194,59 @@ body {
   display: none !important;
 }
 
+/* Floating Custom Tooltip System */
+.veritas-tooltip {
+  position: fixed;
+  z-index: 99999;
+  background: hsl(222, 47%, 13%);
+  color: #ffffff;
+  font-family: var(--font-family);
+  font-size: 0.725rem;
+  font-weight: 500;
+  line-height: 1.35;
+  padding: 0.35rem 0.65rem;
+  border-radius: 6px;
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.28), 0 1px 3px rgba(15, 23, 42, 0.15);
+  pointer-events: none;
+  max-width: 280px;
+  text-align: center;
+  opacity: 0;
+  transform: translateY(4px) scale(0.96);
+  transition: opacity 0.12s ease, transform 0.12s ease;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.veritas-tooltip.visible {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.veritas-tooltip::after {
+  content: '';
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: hsl(222, 47%, 13%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  transform: rotate(45deg);
+}
+
+.veritas-tooltip.placement-top::after {
+  bottom: -4px;
+  left: 50%;
+  margin-left: -3px;
+  border-top: none;
+  border-left: none;
+}
+
+.veritas-tooltip.placement-bottom::after {
+  top: -4px;
+  left: 50%;
+  margin-left: -3px;
+  border-bottom: none;
+  border-right: none;
+}
+
 /* Responsive */
 @media (max-width: 1040px) {
   .veritas-workbench {

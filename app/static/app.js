@@ -652,4 +652,77 @@ document.addEventListener('DOMContentLoaded', () => {
       .replace(/"/g, "&quot;")
       .replace(/'/g, "&#039;");
   }
+
+  // --------------------------------------------------------------------------
+  // Instant Floating Tooltip Engine
+  // --------------------------------------------------------------------------
+  const tooltipEl = document.createElement('div');
+  tooltipEl.className = 'veritas-tooltip';
+  document.body.appendChild(tooltipEl);
+
+  let activeTooltipTarget = null;
+
+  document.addEventListener('mouseover', (e) => {
+    const target = e.target.closest('[title], [data-tooltip]');
+    if (!target) return;
+
+    // Convert title to data-tooltip to suppress ugly browser default delay
+    if (target.hasAttribute('title')) {
+      const text = target.getAttribute('title');
+      if (text && text.trim().length > 0) {
+        target.setAttribute('data-tooltip', text);
+        target.removeAttribute('title');
+      }
+    }
+
+    const text = target.getAttribute('data-tooltip');
+    if (!text || text.trim().length === 0) return;
+
+    activeTooltipTarget = target;
+    tooltipEl.textContent = text;
+    tooltipEl.classList.add('visible');
+
+    positionTooltip(target);
+  });
+
+  document.addEventListener('mouseout', (e) => {
+    const target = e.target.closest('[data-tooltip]');
+    if (target && target === activeTooltipTarget) {
+      activeTooltipTarget = null;
+      tooltipEl.classList.remove('visible');
+    }
+  });
+
+  window.addEventListener('scroll', () => {
+    if (activeTooltipTarget) positionTooltip(activeTooltipTarget);
+  }, true);
+
+  window.addEventListener('resize', () => {
+    if (activeTooltipTarget) positionTooltip(activeTooltipTarget);
+  });
+
+  function positionTooltip(target) {
+    const rect = target.getBoundingClientRect();
+    const tooltipRect = tooltipEl.getBoundingClientRect();
+
+    let top = rect.top - tooltipRect.height - 8;
+    let left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
+    let placement = 'placement-top';
+
+    // If clipping at the top, show below
+    if (top < 8) {
+      top = rect.bottom + 8;
+      placement = 'placement-bottom';
+    }
+
+    // Keep within left/right bounds
+    if (left < 10) left = 10;
+    if (left + tooltipRect.width > window.innerWidth - 10) {
+      left = window.innerWidth - tooltipRect.width - 10;
+    }
+
+    tooltipEl.className = `veritas-tooltip visible ${placement}`;
+    tooltipEl.style.top = `${Math.round(top)}px`;
+    tooltipEl.style.left = `${Math.round(left)}px`;
+  }
 });
