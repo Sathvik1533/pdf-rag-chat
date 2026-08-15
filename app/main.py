@@ -75,6 +75,7 @@ class CitationItem(BaseModel):
     excerpt: str
     similarity_score: float
     chunk_id: int
+    unit_label: str = "Page 1"
 
 
 class ChatResponse(BaseModel):
@@ -144,15 +145,20 @@ async def get_sample_pdf():
 
 
 @app.post("/upload", response_model=UploadResponse, tags=["RAG"])
-async def upload_pdf(file: UploadFile = File(...)):
+async def upload_document(file: UploadFile = File(...)):
     """
-    Stage 1-4 Endpoint: Accepts a PDF file, extracts text page-by-page,
-    chunks it, computes dense embeddings, and indexes them into in-memory FAISS.
+    Universal Ingestion Endpoint: Accepts PDF, Word (DOCX), PowerPoint (PPTX),
+    Excel (XLSX), CSV, TSV, JSON, YAML, Source Code (.py, .js, etc.), Markdown, and Text files.
+    Extracts text, slices into units, computes dense embeddings, and indexes them into in-memory FAISS.
     """
-    if not file.filename.lower().endswith(".pdf"):
+    from app.core.extractors import SUPPORTED_EXTENSIONS
+    from pathlib import Path
+
+    ext = Path(file.filename).suffix.lower()
+    if ext and ext not in SUPPORTED_EXTENSIONS:
         raise HTTPException(
             status_code=400,
-            detail="Invalid file format. Only PDF (.pdf) documents are supported."
+            detail=f"Unsupported format '{ext}'. Supported formats include: PDF, DOCX, PPTX, XLSX, CSV, JSON, YAML, Code (.py, .js, .ts, .sql, etc.), Markdown, and Plain Text."
         )
 
     try:
@@ -160,7 +166,7 @@ async def upload_pdf(file: UploadFile = File(...)):
         if len(content) == 0:
             raise HTTPException(status_code=400, detail="Uploaded file is empty.")
 
-        # Run extraction, chunking, embedding, and FAISS indexing
+        # Run universal extraction, chunking, embedding, and FAISS indexing
         result = pipeline.index_document(content, filename=file.filename)
 
         return UploadResponse(
@@ -168,27 +174,27 @@ async def upload_pdf(file: UploadFile = File(...)):
             total_pages=result["total_pages"],
             total_chunks=result["total_chunks"],
             status="ready",
-            message=f"Successfully indexed '{file.filename}' ({result['total_pages']} pages, {result['total_chunks']} chunks)."
+            message=f"Successfully indexed '{file.filename}' ({result['total_pages']} sections, {result['total_chunks']} chunks)."
         )
 
     except ValueError as ve:
-        logger.warning(f"Validation error during PDF processing: {ve}")
+        logger.warning(f"Validation error during file processing: {ve}")
         raise HTTPException(status_code=422, detail=str(ve))
     except Exception as e:
-        logger.error(f"Unexpected error during PDF processing: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to process PDF: {str(e)}")
+        logger.error(f"Unexpected error during file processing: {e}", exc_info=True)
+        raise HTTPException(status_code=500, detail=f"Failed to process file: {str(e)}")
 
 
 @app.post("/chat", response_model=ChatResponse, tags=["RAG"])
 async def chat_with_document(req: ChatRequest):
     """
     Stage 5 Endpoint: Accepts a question, retrieves the top-4 nearest chunks from FAISS,
-    enforces the code-level grounding check, and returns an answer with page citations.
+    enforces the code-level grounding check, and returns an answer with traceable citations.
     """
     if pipeline.index is None or len(pipeline.chunks) == 0:
         raise HTTPException(
             status_code=400,
-            detail="No document has been uploaded yet. Please upload a PDF to `/upload` first."
+            detail="No document has been uploaded yet. Please upload a file to `/upload` first."
         )
 
     try:
@@ -203,7 +209,8 @@ async def chat_with_document(req: ChatRequest):
                 page=c.page,
                 excerpt=c.excerpt,
                 similarity_score=c.similarity_score,
-                chunk_id=c.chunk_id
+                chunk_id=c.chunk_id,
+                unit_label=getattr(c, "unit_label", f"Page {c.page}")
             )
             for c in query_result.citations
         ]

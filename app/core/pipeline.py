@@ -24,10 +24,13 @@ from typing import List, Dict, Any, Optional, Tuple
 
 import faiss
 import numpy as np
+import torch
 from pypdf import PdfReader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from sentence_transformers import SentenceTransformer
 from groq import Groq
+
+from app.core.extractors import extract_universal, SUPPORTED_EXTENSIONS
 
 logger = logging.getLogger("rag_pipeline")
 logging.basicConfig(level=logging.INFO)
@@ -45,6 +48,7 @@ class DocumentChunk:
     page: int
     source_filename: str
     char_count: int
+    unit_label: str = "Page 1"
 
 
 @dataclass
@@ -54,6 +58,7 @@ class Citation:
     excerpt: str
     similarity_score: float
     chunk_id: int
+    unit_label: str = "Page 1"
 
 
 @dataclass
@@ -115,7 +120,7 @@ class RAGPipeline:
         # (e.g. Pinecone/Weaviate). In-memory FAISS provides sub-millisecond retrieval with 0 infrastructure cost.
         self.index: Optional[faiss.IndexFlatIP] = None
         self.chunks: List[DocumentChunk] = []
-        self.pages_text: List[Tuple[int, str]] = []
+        self.pages_text: List[Tuple[int, str, str]] = []  # (index, label, text)
         self.current_filename: Optional[str] = None
         self.total_pages: int = 0
         self.document_size_bytes: int = 0
@@ -141,47 +146,30 @@ class RAGPipeline:
         return self._embedder
 
     # -------------------------------------------------------------------------
-    # STAGE 1: EXTRACT
+    # STAGE 1: EXTRACT (UNIVERSAL MULTI-FORMAT)
     # -------------------------------------------------------------------------
-    def extract_text_from_pdf(self, file_bytes: bytes, filename: str = "document.pdf") -> List[Tuple[int, str]]:
+    def extract_text_from_document(self, file_bytes: bytes, filename: str = "document.pdf") -> List[Tuple[int, str, str]]:
         """
-        Stage 1: Extract text from PDF bytes page by page.
-        
-        WHY PAGE-BY-PAGE:
-        Extracting text page-by-page (rather than merging the entire document into one giant string)
-        is what allows us to attach exact page numbers to every chunk during the chunking phase.
-        Without this, accurate citations would be impossible.
+        Stage 1: Universally extract text and unit labels from any supported format:
+        PDF, Word (DOCX), PowerPoint (PPTX), Excel (XLSX/CSV), JSON, YAML, Code, Markdown, Plain text.
+        Returns: List of (unit_index, unit_label, text_content).
         """
-        reader = PdfReader(io.BytesIO(file_bytes))
-        pages_text: List[Tuple[int, str]] = []
-        
-        self.total_pages = len(reader.pages)
+        extracted = extract_universal(file_bytes, filename)
+        self.total_pages = len(extracted)
         self.current_filename = filename
+        return extracted
 
-        for page_idx, page in enumerate(reader.pages):
-            page_num = page_idx + 1  # 1-indexed page number for human readability
-            raw_text = page.extract_text() or ""
-            # Strip excessive null bytes and clean up whitespace
-            cleaned_text = raw_text.replace("\x00", "").strip()
-            if cleaned_text:
-                pages_text.append((page_num, cleaned_text))
-            else:
-                logger.warning(f"Page {page_num} in '{filename}' had no extractable text.")
-
-        return pages_text
+    def extract_text_from_pdf(self, file_bytes: bytes, filename: str = "document.pdf") -> List[Tuple[int, str, str]]:
+        """Backward-compatible alias for universal extraction."""
+        return self.extract_text_from_document(file_bytes, filename)
 
     # -------------------------------------------------------------------------
     # STAGE 2: CHUNK
     # -------------------------------------------------------------------------
-    def chunk_pages(self, pages_text: List[Tuple[int, str]], filename: str) -> List[DocumentChunk]:
+    def chunk_pages(self, pages_text: List[Any], filename: str) -> List[DocumentChunk]:
         """
-        Stage 2: Split extracted text into overlapping chunks while preserving page numbers.
-
-        WHY RecursiveCharacterTextSplitter:
-        Unlike naive fixed-character slicing (which cuts words and sentences in half),
-        RecursiveCharacterTextSplitter attempts to split on paragraph breaks (`\n\n`), then lines (`\n`),
-        then spaces (` `), and only as a last resort on individual characters.
-        This preserves complete sentences and syntactic cohesion.
+        Stage 2: Split extracted units into overlapping chunks while preserving unit labels.
+        Supports both (index, label, text) 3-tuples and legacy (index, text) 2-tuples.
         """
         splitter = RecursiveCharacterTextSplitter(
             chunk_size=self.chunk_size,
@@ -193,17 +181,24 @@ class RAGPipeline:
         all_chunks: List[DocumentChunk] = []
         chunk_counter = 0
 
-        for page_num, page_text in pages_text:
-            text_splits = splitter.split_text(page_text)
+        for item in pages_text:
+            if len(item) == 3:
+                unit_idx, unit_label, unit_text = item
+            else:
+                unit_idx, unit_text = item
+                unit_label = f"Page {unit_idx}"
+
+            text_splits = splitter.split_text(unit_text)
             for split in text_splits:
                 cleaned_split = split.strip()
                 if cleaned_split:
                     chunk = DocumentChunk(
                         chunk_id=chunk_counter,
                         text=cleaned_split,
-                        page=page_num,
+                        page=unit_idx,
                         source_filename=filename,
-                        char_count=len(cleaned_split)
+                        char_count=len(cleaned_split),
+                        unit_label=unit_label
                     )
                     all_chunks.append(chunk)
                     chunk_counter += 1
@@ -216,20 +211,15 @@ class RAGPipeline:
     def index_document(self, file_bytes: bytes, filename: str = "document.pdf") -> Dict[str, Any]:
         """
         Execute Stages 1-4: Extract -> Chunk -> Embed -> Index in FAISS.
-        
-        WHY NORMALIZED EMBEDDINGS + IndexFlatIP:
-        Cosine similarity between vectors A and B is (A · B) / (||A|| * ||B||).
-        If we normalize vectors to unit length (||A|| = 1, ||B|| = 1), then Cosine Similarity
-        simplifies exactly to Inner Product (A · B).
-        Using `faiss.IndexFlatIP` on unit-normalized vectors gives exact, high-speed cosine similarity.
+        Works universally on PDF, DOCX, PPTX, XLSX, CSV, JSON, Code, and Text files.
         """
         import time
         start_t = time.time()
 
-        # Step 1: Extract
-        pages_text = self.extract_text_from_pdf(file_bytes, filename)
+        # Step 1: Universal Extract
+        pages_text = self.extract_text_from_document(file_bytes, filename)
         if not pages_text:
-            raise ValueError("The uploaded PDF does not contain any extractable text.")
+            raise ValueError(f"The uploaded file '{filename}' does not contain any extractable text or data.")
 
         # Step 2: Chunk
         chunks = self.chunk_pages(pages_text, filename)
@@ -259,7 +249,7 @@ class RAGPipeline:
         self.document_size_bytes = len(file_bytes)
         self.last_indexing_time_ms = elapsed_ms
 
-        logger.info(f"Indexed document '{filename}': {self.total_pages} pages, {len(chunks)} chunks, FAISS total={index.ntotal} in {elapsed_ms:.1f}ms")
+        logger.info(f"Indexed document '{filename}': {self.total_pages} sections, {len(chunks)} chunks, FAISS total={index.ntotal} in {elapsed_ms:.1f}ms")
 
         return {
             "filename": filename,
@@ -276,10 +266,17 @@ class RAGPipeline:
             return {"indexed": False}
 
         pages_payload = []
-        for page_num, text in self.pages_text:
-            chunks_on_page = [c.chunk_id for c in self.chunks if c.page == page_num]
+        for item in self.pages_text:
+            if len(item) == 3:
+                unit_idx, unit_label, text = item
+            else:
+                unit_idx, text = item
+                unit_label = f"Page {unit_idx}"
+
+            chunks_on_page = [c.chunk_id for c in self.chunks if c.page == unit_idx]
             pages_payload.append({
-                "page": page_num,
+                "page": unit_idx,
+                "label": unit_label,
                 "text": text,
                 "char_count": len(text),
                 "chunk_ids": chunks_on_page
@@ -289,6 +286,7 @@ class RAGPipeline:
             {
                 "chunk_id": c.chunk_id,
                 "page": c.page,
+                "unit_label": getattr(c, "unit_label", f"Page {c.page}"),
                 "char_count": c.char_count,
                 "text": c.text
             }
@@ -432,18 +430,22 @@ class RAGPipeline:
             if len(excerpt_snippet) > 200:
                 excerpt_snippet = excerpt_snippet[:197] + "..."
 
+            unit_lbl = getattr(chunk, "unit_label", f"Page {chunk.page}")
+
             citations.append(Citation(
                 page=chunk.page,
                 excerpt=excerpt_snippet,
                 similarity_score=round(sim, 4),
-                chunk_id=chunk.chunk_id
+                chunk_id=chunk.chunk_id,
+                unit_label=unit_lbl
             ))
 
         # Assemble prompt context
         context_blocks = []
         for idx, (chunk, sim) in enumerate(retrieved_items, start=1):
+            unit_lbl = getattr(chunk, "unit_label", f"Page {chunk.page}")
             context_blocks.append(
-                f"[Source Chunk #{idx} | Page {chunk.page} | Relevance {sim:.2f}]:\n{chunk.text}"
+                f"[Source Chunk #{idx} | {unit_lbl} | Relevance {sim:.2f}]:\n{chunk.text}"
             )
         combined_context = "\n\n".join(context_blocks)
 
