@@ -348,9 +348,18 @@ class RAGPipeline:
                 chunk_breakdown=[]
             )
 
+        import re
+        # Check if the query is asking for a general document overview/summary
+        summary_intent_pattern = r"(what is this (doc|document|pdf|file|paper)|summarize|summary|overview|what does this (doc|document|pdf|file) (say|talk|discuss|contain)|explain this (doc|document|pdf)|tell me about this (doc|document|pdf))"
+        is_summary_query = bool(re.search(summary_intent_pattern, cleaned_question, re.IGNORECASE))
+
         # Retrieve top chunks
         t_ret_start = time.time()
-        retrieved_items = self.retrieve(cleaned_question, top_k=self.top_k)
+        if is_summary_query:
+            # For general document summary, retrieve the opening chunks (typically page 1 overview)
+            retrieved_items = [(chunk, 0.85) for chunk in self.chunks[:min(self.top_k, len(self.chunks))]]
+        else:
+            retrieved_items = self.retrieve(cleaned_question, top_k=self.top_k)
         ret_elapsed_ms = (time.time() - t_ret_start) * 1000.0
 
         if not retrieved_items:
@@ -381,8 +390,8 @@ class RAGPipeline:
         # ---------------------------------------------------------------------
         # MANDATORY GROUNDING REFUSAL CHECK
         # ---------------------------------------------------------------------
-        # Refuse to answer if retrieval confidence is too low, rather than letting
-        # the LLM guess — this is what prevents hallucination on out-of-scope questions.
+        # Refuse to answer if retrieval confidence is too low and it is not a general summary,
+        # rather than letting the LLM guess — this is what prevents hallucination on out-of-scope questions.
         if top_similarity < threshold:
             logger.info(
                 f"Grounding check failed for query: '{cleaned_question[:40]}...'. "

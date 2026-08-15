@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Veritas — Document Assistant with Verified Citations</title>
-  <meta name="description" content="Upload any PDF and ask questions. Get accurate answers with exact page citations. Never makes things up.">
+  <title>Veritas — Grounded Document Intelligence</title>
+  <meta name="description" content="Upload any PDF and ask questions with verifiable page-by-page citations.">
   
-  <!-- Clear, Beautiful Typography -->
+  <!-- Unified, High-Legibility Typography -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Geist+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap" rel="stylesheet">
   
   <!-- Markdown parser -->
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
@@ -25,27 +25,28 @@
           <span class="brand-mark">V</span>
           <div class="brand-titles">
             <span class="brand-name">VERITAS</span>
-            <span class="brand-tag">Verified PDF Document Assistant</span>
+            <span class="brand-tag">Grounded Document Assistant</span>
           </div>
         </div>
 
         <div class="telemetry-pills">
-          <div class="pill" title="AI answers strictly based on your PDF">
+          <div class="pill" title="Answers are directly cited from your uploaded PDF">
             <span class="pill-dot pill-dot-emerald"></span>
-            <span>Fact-Checked by Default</span>
+            <span>Source-Grounded</span>
           </div>
-          <div class="pill" title="Every answer shows the page number">
+          <div class="pill" title="Every answer references the exact source page">
             <span class="pill-dot pill-dot-blue"></span>
-            <span>Page Citations Enabled</span>
+            <span>Page Citations</span>
           </div>
-          <div class="pill" title="Refuses out-of-scope questions">
-            <span>Zero Hallucination Guarantee</span>
+          <div class="pill" title="Refuses out-of-scope questions below 0.35 similarity">
+            <span class="pill-dot pill-dot-amber"></span>
+            <span>Refusal Floor: 0.35</span>
           </div>
         </div>
       </div>
 
       <div class="nav-right">
-        <button id="load-sample-btn" class="btn btn-secondary btn-sm" title="Load a sample PDF to try Veritas immediately">
+        <button id="load-sample-btn" class="btn btn-secondary btn-sm" title="Load sample document for instant testing">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
             <polyline points="14 2 14 8 20 8"></polyline>
@@ -55,7 +56,7 @@
           <span>Try Sample Document</span>
         </button>
 
-        <button id="export-audit-btn" class="btn btn-ghost btn-sm" title="Download a summary report of your Q&A session">
+        <button id="export-audit-btn" class="btn btn-ghost btn-sm" title="Download Q&A session summary">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
             <polyline points="7 10 12 15 17 10"></polyline>
@@ -64,7 +65,7 @@
           <span>Export Summary</span>
         </button>
 
-        <button id="toggle-config-btn" class="btn btn-ghost btn-icon" title="Preferences & Settings" aria-label="Settings">
+        <button id="toggle-config-btn" class="btn btn-ghost btn-icon" title="Engine Settings" aria-label="Settings">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="3"></circle>
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
@@ -77,37 +78,37 @@
     <div id="config-drawer" class="config-drawer hidden">
       <div class="drawer-inner">
         <div class="drawer-header">
-          <h3>Assistant Preferences</h3>
+          <h3>Assistant Configuration</h3>
           <button id="close-config-btn" class="btn-close">&times;</button>
         </div>
         <div class="drawer-body">
           <div class="form-group">
-            <label for="cfg-groq-key">Custom API Key (Optional)</label>
-            <input type="password" id="cfg-groq-key" placeholder="Defaults to server setup">
-            <span class="form-caption">Leave empty to use the standard server setup.</span>
+            <label for="cfg-groq-key">Custom Groq API Key (Optional)</label>
+            <input type="password" id="cfg-groq-key" placeholder="Defaults to server environment">
+            <span class="form-caption">Leave blank to use the active server setup.</span>
           </div>
 
           <div class="form-group">
             <div class="slider-header">
-              <label for="cfg-threshold">Fact-Checking Strictness</label>
+              <label for="cfg-threshold">Grounding Refusal Threshold</label>
               <span id="cfg-threshold-val" class="badge-mono">Balanced (0.35)</span>
             </div>
             <input type="range" id="cfg-threshold" min="0.10" max="0.75" step="0.05" value="0.35">
-            <span class="form-caption">Higher = strictly refuses questions unless an exact match is found. Lower = answers more freely.</span>
+            <span class="form-caption">Controls how strictly the system refuses questions when similarity to document content is low.</span>
           </div>
 
           <div class="engine-specs">
             <div class="spec-row">
-              <span class="spec-label">Document Splitting</span>
-              <span class="spec-val">Automatic paragraph-level slices</span>
+              <span class="spec-label">Embedding Model</span>
+              <span class="spec-val">all-MiniLM-L6-v2 (384 Dimensions)</span>
             </div>
             <div class="spec-row">
-              <span class="spec-label">Search Speed</span>
-              <span class="spec-val">Instant (~15ms in-memory lookup)</span>
+              <span class="spec-label">Vector Index</span>
+              <span class="spec-val">FAISS Cosine Similarity (IndexFlatIP)</span>
             </div>
             <div class="spec-row">
-              <span class="spec-label">AI Engine</span>
-              <span class="spec-val">Llama 3.3 70B (Powered by Groq)</span>
+              <span class="spec-label">Synthesis Model</span>
+              <span class="spec-val">Llama 3.3 70B Versatile via Groq</span>
             </div>
           </div>
         </div>
@@ -145,7 +146,7 @@
                   <line x1="12" y1="20" x2="12" y2="4"></line>
                   <line x1="6" y1="20" x2="6" y2="14"></line>
                 </svg>
-                <span>Fact-Check Meter</span>
+                <span>Grounding Meter</span>
               </button>
             </div>
           </div>
@@ -170,7 +171,7 @@
           <!-- Ingestion Progress Loader -->
           <div id="ingest-loader" class="ingest-loader hidden">
             <div class="loader-bar"><div class="loader-bar-progress"></div></div>
-            <p id="ingest-loader-text" class="loader-caption">Reading pages and preparing document for search...</p>
+            <p id="ingest-loader-text" class="loader-caption">Parsing pages and indexing document content...</p>
           </div>
 
           <!-- Document Meta Strip -->
@@ -189,7 +190,7 @@
             </div>
             <div class="meta-pill">
               <span class="meta-label">Status:</span>
-              <span class="meta-value text-emerald">Ready to chat</span>
+              <span class="meta-value text-emerald">Ready to search</span>
             </div>
           </div>
         </div>
@@ -205,7 +206,7 @@
             </div>
             <div id="reader-pages-container" class="reader-pages-container">
               <div class="reader-empty">
-                <p>Upload any PDF document to read its pages here and see matching evidence highlighted when you chat.</p>
+                <p>Upload a document to view formatted pages here and see matching evidence highlighted when you ask questions.</p>
               </div>
             </div>
           </div>
@@ -224,49 +225,49 @@
           </div>
         </div>
 
-        <!-- Tab 3: Fact-Check Meter (Diagnostics) -->
+        <!-- Tab 3: Grounding Meter (Diagnostics) -->
         <div id="panel-diagnostics" class="tab-panel">
           <div class="spectrum-card">
             <div class="spectrum-header">
-              <span class="section-label">AI Fact-Checking Guarantee</span>
+              <span class="section-label">Grounding Verification Status</span>
             </div>
             
             <div class="spectrum-visual">
               <div class="spectrum-bar">
                 <div class="spectrum-zone zone-refusal" style="width: 35%;">
-                  <span class="zone-tag">Safely Refuse</span>
+                  <span class="zone-tag">Refusal Zone</span>
                 </div>
                 <div class="spectrum-zone zone-grounded" style="width: 65%;">
-                  <span class="zone-tag">Answer with Evidence</span>
+                  <span class="zone-tag">Grounded Zone</span>
                 </div>
               </div>
               <div class="threshold-marker" style="left: 35%;">
                 <span class="marker-line"></span>
-                <span class="marker-text">Strictness Cutoff</span>
+                <span class="marker-text">Threshold (0.35)</span>
               </div>
             </div>
 
             <div id="latest-query-radar" class="latest-radar-box">
               <div class="radar-row">
-                <span class="radar-lbl">Latest Question:</span>
-                <span id="radar-status" class="badge-subtle">Waiting for question</span>
+                <span class="radar-lbl">Latest Query:</span>
+                <span id="radar-status" class="badge-subtle">Waiting for input</span>
               </div>
               <div class="radar-row">
-                <span class="radar-lbl">Match Confidence:</span>
+                <span class="radar-lbl">Max Similarity:</span>
                 <span id="radar-score" class="font-mono">--</span>
               </div>
               <div class="radar-row">
-                <span class="radar-lbl">Search Speed:</span>
+                <span class="radar-lbl">Retrieval Latency:</span>
                 <span id="radar-ret-latency" class="font-mono">--</span>
               </div>
               <div class="radar-row">
-                <span class="radar-lbl">Answer Speed:</span>
+                <span class="radar-lbl">Generation Latency:</span>
                 <span id="radar-gen-latency" class="font-mono">--</span>
               </div>
             </div>
 
             <p class="spectrum-note">
-              <strong>How this keeps answers truthful:</strong> If your question is not mentioned in your document, the assistant automatically says <em>"I couldn't find anything about that in this document"</em> instead of guessing or making things up.
+              <strong>Grounding Protocol:</strong> If a question lacks sufficient semantic similarity to the document (< 0.35), the LLM generation is bypassed in code to return a deterministic refusal.
             </p>
           </div>
         </div>
@@ -293,7 +294,7 @@
               </div>
               <h2 class="empty-title">Ask Questions About Your PDF</h2>
               <p class="empty-subtitle">
-                Upload a document on the left (or click <strong>"Try Sample Document"</strong>). Ask anything you want to know. Every answer shows the exact page it came from. If something isn't in your document, the assistant will tell you honestly rather than guessing.
+                Upload a document on the left or click <strong>"Try Sample Document"</strong>. Ask any question to receive synthesized answers with exact page-level citations.
               </p>
             </div>
 
@@ -302,10 +303,10 @@
           <!-- Floating Starter Chips (Shown when doc is loaded) -->
           <div id="starter-chips" class="starter-chips hidden">
             <span class="starter-label">Suggested Questions:</span>
-            <button class="chip" data-query="What is the main summary and purpose of this document?">Document Summary</button>
-            <button class="chip" data-query="What are the key budgets, costs, or financial numbers?">Budgets & Costs</button>
-            <button class="chip" data-query="What are the deadlines, milestones, or important dates?">Important Dates & Deadlines</button>
-            <button class="chip" data-query="How do warp drive antimatter engines navigate through gravitational wormholes?">Test Refusal (Question not in PDF) ⚡</button>
+            <button class="chip" data-query="What is this document about?">Document Summary</button>
+            <button class="chip" data-query="What are the key budgets, costs, or financial allocations?">Budgets & Costs</button>
+            <button class="chip" data-query="What are the deadlines, milestones, or important dates?">Milestones & Deadlines</button>
+            <button class="chip" data-query="How do warp drive antimatter engines navigate through gravitational wormholes?">Test Refusal (Out-of-Scope) ⚡</button>
           </div>
 
           <!-- Bottom Prompt Composer -->
@@ -330,7 +331,7 @@
 
               <div class="composer-footer">
                 <span class="footer-hint">Press <strong>Enter</strong> to send &bull; <strong>Shift+Enter</strong> for newline</span>
-                <span class="footer-guarantee">✓ Truthful Answers &bull; Page-by-Page Citations</span>
+                <span class="footer-guarantee">✓ Grounded Synthesis &bull; Exact Page Citations</span>
               </div>
             </form>
           </div>
