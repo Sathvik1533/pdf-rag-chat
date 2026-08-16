@@ -1433,7 +1433,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     historyList.innerHTML = '';
     list.forEach((doc, idx) => {
-      const isCurrent = currentDossier && currentDossier.filename === doc.filename;
+      const isCurrent = Boolean(activeDocumentInfo && activeDocumentInfo.filename === doc.filename);
       const item = document.createElement('div');
       item.className = `history-item ${isCurrent ? 'active-item' : ''}`;
       const ext = doc.filename.split('.').pop().toUpperCase();
@@ -1451,7 +1451,7 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
         <div class="history-actions">
           ${isCurrent 
-            ? '<span class="badge-status-ready">ACTIVE</span>' 
+            ? '<span class="badge-status-ready"><span class="pill-dot pill-dot-emerald"></span> ACTIVE</span>' 
             : `<button class="btn-history-load" data-index="${idx}">Switch</button>`}
           <button class="btn-history-delete" data-index="${idx}" title="Remove from Library">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1484,7 +1484,7 @@ document.addEventListener('DOMContentLoaded', () => {
           localStorage.setItem(`veritas_doc_history_${currentSessionId}`, JSON.stringify(updated));
           updateHistoryBadge();
           renderHistoryModal();
-          if (currentDocName === doc.filename) {
+          if (activeDocumentInfo && activeDocumentInfo.filename === doc.filename) {
             clearCurrentChatThread();
           }
         });
@@ -1521,27 +1521,62 @@ document.addEventListener('DOMContentLoaded', () => {
   updateHistoryBadge();
 
   // --------------------------------------------------------------------------
-  // Clear Current Chat Thread / New Conversation (Full Clean Reset)
+  // Action 1: Clear Messages Only (Keeps active document loaded)
+  // --------------------------------------------------------------------------
+  function clearVisibleMessagesOnly() {
+    TTSController.stop();
+    document.querySelectorAll('.passage-highlight').forEach(el => el.classList.remove('passage-highlight'));
+
+    if (activeDocumentInfo && activeDocumentInfo.filename) {
+      const key = getChatStorageKey(activeDocumentInfo.filename);
+      localStorage.removeItem(key);
+    }
+    conversationHistory = [];
+
+    if (chatThread) {
+      chatThread.innerHTML = '';
+      chatThread.classList.add('hidden');
+    }
+
+    if (activeDocumentInfo) {
+      if (emptyState) {
+        emptyState.innerHTML = `
+          <div class="empty-dossier-icon active-dossier-icon">
+            <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <circle cx="12" cy="14" r="3"></circle>
+              <polyline points="11 14 12 15 14 13"></polyline>
+            </svg>
+          </div>
+          <h2 class="empty-title">"${escapeHtml(activeDocumentInfo.filename)}" is Ready</h2>
+          <p class="empty-subtitle">
+            <strong>${activeDocumentInfo.total_pages || 1} sections</strong> (${activeDocumentInfo.total_chunks || 1} parts) indexed with citation matching. Ask any question below or choose a topic.
+          </p>
+        `;
+        emptyState.classList.remove('hidden');
+      }
+      if (starterChips) starterChips.classList.remove('hidden');
+    } else {
+      if (emptyState) emptyState.classList.remove('hidden');
+    }
+
+    activateView('view-chat');
+
+    if (composerInput) {
+      composerInput.value = '';
+      composerInput.focus();
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // Action 2: New Chat (Full Workspace Reset to Dropzone)
   // --------------------------------------------------------------------------
   function clearCurrentChatThread() {
     TTSController.stop();
     document.querySelectorAll('.passage-highlight').forEach(el => el.classList.remove('passage-highlight'));
 
-    // Clear active document context
-    currentDocName = null;
-    currentDossier = null;
-
-    // Reset workspace UI
-    if (docMetaStrip) docMetaStrip.classList.add('hidden');
-    if (dropzone) dropzone.classList.remove('hidden');
-    if (starterChips) starterChips.classList.add('hidden');
-
-    conversationHistory = [];
-    if (chatThread) {
-      chatThread.innerHTML = '';
-      chatThread.classList.add('hidden');
-    }
-    if (emptyState) emptyState.classList.remove('hidden');
+    setWorkspaceActiveDocument(null);
 
     // Reset Document Reader sheets
     if (readerPagesContainer) {
@@ -1556,17 +1591,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     activateView('view-chat');
-
-    if (composerInput) {
-      composerInput.value = '';
-      composerInput.placeholder = 'Ask anything about your document...';
-      composerInput.focus();
-    }
   }
 
-  const btnClearChat = document.getElementById('btn-clear-chat');
-  if (btnClearChat) {
-    btnClearChat.addEventListener('click', clearCurrentChatThread);
+  const topBtnClearMessages = document.getElementById('top-btn-clear-messages');
+  if (topBtnClearMessages) {
+    topBtnClearMessages.addEventListener('click', clearVisibleMessagesOnly);
   }
 
   const topBtnNewChat = document.getElementById('top-btn-new-chat');

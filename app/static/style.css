@@ -1806,6 +1806,22 @@ body.theme-dark .marker-line {
   gap: 0.5rem;
 }
 
+.badge-status-ready {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: var(--emerald-bg);
+  color: var(--emerald-text);
+  border: 1px solid var(--emerald-border);
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.3rem 0.65rem;
+  border-radius: var(--r-full);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+}
+
 .btn-history-load {
   background: var(--ink-base);
   color: var(--text-inverted);
