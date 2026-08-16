@@ -51,7 +51,9 @@ Engineered with an ultra-lightweight memory footprint (<10MB RAM per session), V
 5. **⚡ Circuit Breaker & Exponential Backoff LLM Engine**: Groq LLaMA 3.3 70B synthesis with 3-tier exponential retry (0.5s, 1.2s, 2.5s). If upstream APIs experience outages or rate limits, the circuit breaker automatically serves a verified **Grounded Extractive Summary** directly from indexed chunks.
 6. **📄 Universal 9-Format Ingestion**: Ingests **PDF, Word (.docx), PowerPoint (.pptx), Excel (.xlsx), CSV, TSV, JSON, YAML, Source Code (.py, .js, .ts, .sql), Markdown, and Plain Text** with automatic magic-byte sniffing.
 7. **🕸️ Interactive 2D Neural Knowledge Graph**: Automatically maps document semantic clusters and entity relationships into a dynamic, physics-simulated canvas with 1-click Document Reader jumping.
-8. **🎙️ Voice Dictation & Audio Read-Aloud**: Integrated Web Speech API for hands-free speech queries and natural text-to-speech audio synthesis.
+8. **🎙️ Speech & Audio Intelligence Engine (Muted-Recording Verified)**: 
+   - **Live Voice Dictation**: Real-time speech-to-text typing feedback (`interimResults: true`) with animated recording beacon.
+   - **Resilient Neural TTS**: Web Speech API read-aloud featuring a **4-bar animated equalizer waveform**, **synchronized on-screen live subtitles (`.tts-live-caption-bar`)**, sentence boundary highlights, 30s safety watchdog timer, and tab-switch backgrounding recovery.
 
 ---
 
