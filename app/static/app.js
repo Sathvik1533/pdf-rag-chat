@@ -71,9 +71,98 @@ document.addEventListener('DOMContentLoaded', () => {
 
   let currentDossier = null;
   let conversationHistory = [];
+  let activeDocumentInfo = null;
+
+  function setWorkspaceActiveDocument(docInfo) {
+    if (!docInfo || !docInfo.filename) {
+      // Full reset / No active document
+      activeDocumentInfo = null;
+      currentDossier = null;
+      localStorage.removeItem('veritas_active_doc');
+
+      if (docMetaStrip) docMetaStrip.classList.add('hidden');
+      if (dropzone) dropzone.classList.remove('hidden');
+      if (starterChips) starterChips.classList.add('hidden');
+
+      if (emptyState) {
+        emptyState.innerHTML = `
+          <div class="empty-dossier-icon">
+            <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+              <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+          </div>
+          <h2 class="empty-title">Ask Anything About Your Document</h2>
+          <p class="empty-subtitle">
+            Drop any file on the left or click <strong>"Try Sample"</strong> above. Ask any question and get instant, honest answers straight from your file.
+          </p>
+        `;
+        emptyState.classList.remove('hidden');
+      }
+
+      if (chatThread) {
+        chatThread.innerHTML = '';
+        chatThread.classList.add('hidden');
+      }
+
+      if (composerInput) {
+        composerInput.disabled = false;
+        composerInput.value = '';
+        composerInput.placeholder = 'Ask anything about your document...';
+      }
+      return;
+    }
+
+    // Active Document Loaded
+    activeDocumentInfo = docInfo;
+    localStorage.setItem('veritas_active_doc', docInfo.filename);
+
+    // 1. Update Sidebar Active Doc Card
+    if (metaFilename) metaFilename.textContent = docInfo.filename;
+    if (metaPages) metaPages.textContent = `${docInfo.total_pages || 1} sections`;
+    if (metaChunks) metaChunks.textContent = `${docInfo.total_chunks || 1} parts`;
+    if (docMetaStrip) docMetaStrip.classList.remove('hidden');
+    if (dropzone) dropzone.classList.add('hidden');
+
+    // 2. Update Composer
+    if (composerInput) {
+      composerInput.disabled = false;
+      composerInput.placeholder = `Ask any question about ${docInfo.filename}...`;
+      composerInput.focus();
+    }
+    if (composerSend) composerSend.disabled = false;
+
+    // 3. Update Starter Chips
+    if (starterChips) starterChips.classList.remove('hidden');
+    updateSmartStarterChips(docInfo.filename);
+
+    // 4. Update Empty State (When no messages exist yet for this active document)
+    if (emptyState) {
+      emptyState.innerHTML = `
+        <div class="empty-dossier-icon active-dossier-icon">
+          <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <circle cx="12" cy="14" r="3"></circle>
+            <polyline points="11 14 12 15 14 13"></polyline>
+          </svg>
+        </div>
+        <h2 class="empty-title">"${escapeHtml(docInfo.filename)}" is Ready</h2>
+        <p class="empty-subtitle">
+          <strong>${docInfo.total_pages || 1} sections</strong> (${docInfo.total_chunks || 1} parts) indexed with citation matching. Ask any question below or choose a topic.
+        </p>
+      `;
+    }
+
+    // 5. Restore or Initialize chat thread for this file
+    restoreChatThread(docInfo.filename);
+  }
 
   function getChatStorageKey(filename) {
-    const fn = filename || (currentDossier ? currentDossier.filename : (localStorage.getItem('veritas_active_doc') || 'default'));
+    const fn = filename || (activeDocumentInfo ? activeDocumentInfo.filename : (currentDossier ? currentDossier.filename : (localStorage.getItem('veritas_active_doc') || 'default')));
     return `veritas_chat_thread_${currentSessionId}_${fn}`;
   }
 
@@ -117,7 +206,7 @@ document.addEventListener('DOMContentLoaded', () => {
         chatThread.classList.add('hidden');
       }
       if (emptyState) emptyState.classList.remove('hidden');
-      if (starterChips && currentDocName) starterChips.classList.remove('hidden');
+      if (starterChips && (docFilename || activeDocumentInfo)) starterChips.classList.remove('hidden');
     } catch (e) {
       console.warn('Could not restore chat thread:', e);
       if (chatThread) chatThread.classList.add('hidden');
@@ -521,11 +610,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
 
-      // Update Meta Strip
-      metaFilename.textContent = data.filename;
-      metaPages.textContent = `${data.total_pages} sections`;
-      metaChunks.textContent = `${data.total_chunks} chunks`;
-
       // Save to Document History Library
       saveDocHistory({
         filename: data.filename,
@@ -535,25 +619,10 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       ingestLoader.classList.add('hidden');
-      docMetaStrip.classList.remove('hidden');
-      dropzone.classList.add('hidden'); // Ensure dropzone stays hidden!
 
-      // Unlock Composer
-      if (composerInput) {
-        composerInput.disabled = false;
-        composerInput.placeholder = `Ask any question about ${data.filename}...`;
-        composerInput.focus();
-      }
-      if (composerSend) {
-        composerSend.disabled = false;
-      }
-
-      if (starterChips) starterChips.classList.remove('hidden');
-
-      // Isolate Chat Workspace to this specific document
-      restoreChatThread(data.filename);
-
-      updateSmartStarterChips(data.filename);
+      // Fully activate new document workspace
+      setWorkspaceActiveDocument(data);
+      updateHistoryBadge();
 
     } catch (err) {
       console.error(err);
@@ -1308,28 +1377,8 @@ document.addEventListener('DOMContentLoaded', () => {
           if (currentDossier) renderDocumentDossier(currentDossier);
         }
 
-        // Update Meta Strip
-        metaFilename.textContent = data.filename;
-        metaPages.textContent = `${data.total_pages} sections`;
-        metaChunks.textContent = `${data.total_chunks} chunks`;
-
-        localStorage.setItem('veritas_active_doc', data.filename);
-
-        // Switch active chat workspace to this specific document
-        restoreChatThread(data.filename);
-
         ingestLoader.classList.add('hidden');
-        docMetaStrip.classList.remove('hidden');
-
-        if (composerInput) {
-          composerInput.disabled = false;
-          composerInput.placeholder = `Ask any question about ${data.filename}...`;
-          composerInput.focus();
-        }
-        if (composerSend) composerSend.disabled = false;
-        if (starterChips) starterChips.classList.remove('hidden');
-
-        updateSmartStarterChips(data.filename);
+        setWorkspaceActiveDocument(data);
         updateHistoryBadge();
         return true;
       }
@@ -2016,25 +2065,17 @@ document.addEventListener('DOMContentLoaded', () => {
       if (res.ok) {
         const data = await res.json();
         if (data.indexed) {
-          localStorage.setItem('veritas_active_doc', data.document_name);
-          metaFilename.textContent = data.document_name;
-          metaPages.textContent = `${data.total_pages} sections`;
-          metaChunks.textContent = `${data.total_chunks} chunks`;
-          docMetaStrip.classList.remove('hidden');
-          dropzone.classList.add('hidden');
-          composerInput.disabled = false;
-          composerSend.disabled = false;
-          composerInput.placeholder = `Ask any question about ${data.document_name}...`;
-          starterChips.classList.remove('hidden');
-          updateSmartStarterChips(data.document_name);
-
           const dossierRes = await apiFetch('/document/dossier');
           if (dossierRes.ok) {
             currentDossier = await dossierRes.json();
             renderDocumentDossier(currentDossier);
           }
 
-          restoreChatThread(data.document_name);
+          setWorkspaceActiveDocument({
+            filename: data.document_name,
+            total_pages: data.total_pages,
+            total_chunks: data.total_chunks
+          });
           return;
         }
       }
@@ -2046,20 +2087,15 @@ document.addEventListener('DOMContentLoaded', () => {
         if (cachedBlob) {
           const file = new File([cachedBlob], savedDocName, { type: cachedBlob.type || 'application/octet-stream' });
           await ingestPdfFile(file, true);
-          restoreChatThread(savedDocName);
           return;
         }
       }
 
       // Clean fallback if no prior document exists or if session expired
-      dropzone.classList.remove('hidden');
-      docMetaStrip.classList.add('hidden');
-      localStorage.removeItem('veritas_active_doc');
-      if (emptyState) emptyState.classList.remove('hidden');
+      setWorkspaceActiveDocument(null);
     } catch (e) {
       console.warn('Status offline or rehydration check failed:', e);
-      dropzone.classList.remove('hidden');
-      docMetaStrip.classList.add('hidden');
+      setWorkspaceActiveDocument(null);
     }
   }
 
