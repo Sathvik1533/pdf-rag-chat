@@ -46,7 +46,12 @@ def extract_pdf(file_bytes: bytes, filename: str) -> List[ExtractedUnit]:
     and mislabeled files with multi-tier automated recovery.
     """
     import pypdf
+    logging.getLogger("pypdf").setLevel(logging.ERROR)
     units: List[ExtractedUnit] = []
+
+    # Check if this is an OLE2 binary file (MS Word/Office) mislabeled as .pdf
+    if file_bytes.startswith(b'\xd0\xcf\x11\xe0\xa1'):
+        return extract_binary_doc(file_bytes, filename)
 
     # Tier 1: Standard pypdf extraction with lenient parsing
     try:
@@ -60,12 +65,12 @@ def extract_pdf(file_bytes: bytes, filename: str) -> List[ExtractedUnit]:
                 if cleaned:
                     units.append(ExtractedUnit(index=idx + 1, label=f"Page {idx + 1}", text=cleaned))
             except Exception as pe:
-                logger.warning(f"Error on page {idx + 1} of {filename}: {pe}")
+                logger.debug(f"Error on page {idx + 1} of {filename}: {pe}")
                 
         if units:
             return units
     except Exception as e:
-        logger.warning(f"pypdf reader failed on {filename}: {e}. Activating PDF raw stream recovery...")
+        logger.debug(f"pypdf lenient parse failed on {filename}: {e}. Activating raw stream recovery...")
 
     # Tier 2: Raw PDF stream decompresion & operator text extraction
     stream_passages = extract_pdf_raw_streams(file_bytes)
@@ -83,7 +88,7 @@ def extract_pdf(file_bytes: bytes, filename: str) -> List[ExtractedUnit]:
         if units:
             return units
 
-    # Tier 3: Binary string & UTF-16 stream recovery (in case the file was converted or renamed)
+    # Tier 3: Binary string & UTF-16 stream recovery
     return extract_binary_doc(file_bytes, filename)
 
 
@@ -547,11 +552,14 @@ def extract_text_fallback(file_bytes: bytes, filename: str) -> List[ExtractedUni
 def extract_universal(file_bytes: bytes, filename: str) -> List[Tuple[int, str, str]]:
     """
     Main universal extraction dispatcher.
-    Returns a list of (unit_index, unit_label, unit_text).
+    Inspects magic bytes first to handle mislabeled or converted files automatically.
     """
     ext = Path(filename).suffix.lower()
     
-    if ext == ".pdf":
+    # Check Magic Bytes first for OLE2 binary office files
+    if file_bytes.startswith(b'\xd0\xcf\x11\xe0\xa1'):
+        units = extract_binary_doc(file_bytes, filename)
+    elif ext == ".pdf":
         units = extract_pdf(file_bytes, filename)
     elif ext in [".docx", ".doc", ".odt", ".rtf"]:
         units = extract_docx(file_bytes, filename)
@@ -571,7 +579,6 @@ def extract_universal(file_bytes: bytes, filename: str) -> List[Tuple[int, str, 
     ]:
         units = extract_code(file_bytes, filename)
     else:
-        # Default text extractor
         units = extract_plain_text(file_bytes, filename)
         
     return [u.to_tuple() for u in units]
