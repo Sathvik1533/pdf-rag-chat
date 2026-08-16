@@ -1736,15 +1736,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const bubble = document.createElement('div');
     bubble.className = 'msg-bubble';
 
-    // Fact-Check Badge
+    // Fact-Check / Grounding Audit Badge
     const auditBadge = document.createElement('div');
     if (data.grounded) {
       auditBadge.className = 'grounding-audit-badge audit-grounded';
+      const simPct = (data.top_similarity * 100).toFixed(1);
       const pageNum = data.citations && data.citations[0] ? (data.citations[0].unit_label || `Page ${data.citations[0].page}`) : 'Document';
-      auditBadge.innerHTML = `<span class="badge-dot"></span> Found in Document &bull; ${escapeHtml(pageNum)}`;
+      auditBadge.innerHTML = `<span class="badge-dot"></span> <strong>Grounded Proof</strong> &bull; ${simPct}% Match &bull; ${escapeHtml(pageNum)}`;
     } else {
       auditBadge.className = 'grounding-audit-badge audit-refusal';
-      auditBadge.innerHTML = `<span class="badge-dot dot-refusal"></span> Not mentioned in this document`;
+      const simPct = (data.top_similarity * 100).toFixed(1);
+      auditBadge.innerHTML = `<span class="badge-dot dot-refusal"></span> <strong>Refused &bull; Not in Document</strong> (${simPct}% similarity)`;
     }
     bubble.appendChild(auditBadge);
 
@@ -1754,7 +1756,7 @@ document.addEventListener('DOMContentLoaded', () => {
     markdownBody.innerHTML = window.marked ? marked.parse(data.answer) : data.answer;
     bubble.appendChild(markdownBody);
 
-    // Evidence Deck (Citations)
+    // Verification Ledger / Evidence Deck (Citations)
     if (data.grounded && data.citations && data.citations.length > 0) {
       const deck = document.createElement('div');
       deck.className = 'evidence-deck';
@@ -1762,8 +1764,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const deckHeader = document.createElement('div');
       deckHeader.className = 'evidence-header';
       deckHeader.innerHTML = `
-        <span>Source Pages:</span>
-        <span style="font-size:0.68rem;font-weight:500;color:var(--text-muted);text-transform:none;">Click any box to view page</span>
+        <span>Verified Evidence Ledger (${data.citations.length} ${data.citations.length === 1 ? 'source' : 'sources'}):</span>
+        <span style="font-size:0.68rem;font-weight:500;color:var(--text-muted);text-transform:none;">Click box to inspect source page</span>
       `;
       deck.appendChild(deckHeader);
 
@@ -1778,9 +1780,9 @@ document.addEventListener('DOMContentLoaded', () => {
         card.innerHTML = `
           <div class="evidence-top">
             <span>${escapeHtml(label)}</span>
+            <span class="jump-btn-tag">↗ Open ${escapeHtml(label)}</span>
           </div>
           <div class="evidence-quote">"${escapeHtml(c.excerpt)}"</div>
-          <span class="jump-btn-tag">↗ Open ${escapeHtml(label)}</span>
         `;
         card.addEventListener('click', () => {
           activateView('view-doc');
