@@ -1496,20 +1496,30 @@ document.addEventListener('DOMContentLoaded', () => {
     const rect = target.getBoundingClientRect();
     const tooltipRect = tooltipEl.getBoundingClientRect();
 
-    let top = rect.top - tooltipRect.height - 6;
-    let left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
+    let top = 0;
+    let left = 0;
     let placement = 'placement-top';
 
-    // If clipping at the top, show below
-    if (top < 6) {
-      top = rect.bottom + 6;
-      placement = 'placement-bottom';
-    }
+    if (target.closest('.studio-sidebar')) {
+      placement = 'placement-right';
+      top = rect.top + (rect.height / 2) - (tooltipRect.height / 2);
+      left = rect.right + 10;
+    } else {
+      top = rect.top - tooltipRect.height - 6;
+      left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
+      placement = 'placement-top';
 
-    // Keep within left/right bounds
-    if (left < 8) left = 8;
-    if (left + tooltipRect.width > window.innerWidth - 8) {
-      left = window.innerWidth - tooltipRect.width - 8;
+      // If clipping at the top, show below
+      if (top < 6) {
+        top = rect.bottom + 6;
+        placement = 'placement-bottom';
+      }
+
+      // Keep within left/right bounds
+      if (left < 8) left = 8;
+      if (left + tooltipRect.width > window.innerWidth - 8) {
+        left = window.innerWidth - tooltipRect.width - 8;
+      }
     }
 
     tooltipEl.className = `veritas-tooltip visible ${placement}`;

@@ -30,15 +30,15 @@
         </div>
 
         <div class="telemetry-pills">
-          <div class="pill">
+          <div class="pill" data-tooltip="Answers are verified directly against your document">
             <span class="pill-dot pill-dot-emerald"></span>
             <span>Fact-Checked</span>
           </div>
-          <div class="pill">
+          <div class="pill" data-tooltip="Shows the exact page where facts were found">
             <span class="pill-dot pill-dot-blue"></span>
             <span>Exact Page Numbers</span>
           </div>
-          <div class="pill">
+          <div class="pill" data-tooltip="Refuses to guess if info is not in your document">
             <span class="pill-dot pill-dot-amber"></span>
             <span>Zero Guesses</span>
           </div>
@@ -259,14 +259,14 @@
         <nav class="sidebar-nav-menu">
           <div class="sidebar-section-title">VIEWS</div>
           
-          <button id="nav-view-chat" class="sidebar-nav-item active" data-view="view-chat">
+          <button id="nav-view-chat" class="sidebar-nav-item active" data-view="view-chat" data-tooltip="Ask questions &amp; chat with document">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
             </svg>
             <span>Chat</span>
           </button>
 
-          <button id="nav-view-doc" class="sidebar-nav-item" data-view="view-doc">
+          <button id="nav-view-doc" class="sidebar-nav-item" data-view="view-doc" data-tooltip="Read full document pages side-by-side">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
               <polyline points="14 2 14 8 20 8"></polyline>
@@ -277,14 +277,14 @@
             <span>Document Reader</span>
           </button>
 
-          <button id="nav-view-presets" class="sidebar-nav-item" data-view="view-presets">
+          <button id="nav-view-presets" class="sidebar-nav-item" data-view="view-presets" data-tooltip="1-Click summaries, costs, risks &amp; dates">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
             </svg>
             <span>Quick Summaries</span>
           </button>
 
-          <button id="nav-view-graph" class="sidebar-nav-item" data-view="view-graph">
+          <button id="nav-view-graph" class="sidebar-nav-item" data-view="view-graph" data-tooltip="Visual interactive topic map">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="18" cy="5" r="3"></circle>
               <circle cx="6" cy="12" r="3"></circle>
@@ -295,7 +295,7 @@
             <span>Topic Map</span>
           </button>
 
-          <button id="nav-view-chunks" class="sidebar-nav-item" data-view="view-chunks">
+          <button id="nav-view-chunks" class="sidebar-nav-item" data-view="view-chunks" data-tooltip="Browse all parsed sections of document">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
               <polyline points="2 17 12 22 22 17"></polyline>
@@ -304,7 +304,7 @@
             <span>Sections Map</span>
           </button>
 
-          <button id="nav-view-radar" class="sidebar-nav-item" data-view="view-radar">
+          <button id="nav-view-radar" class="sidebar-nav-item" data-view="view-radar" data-tooltip="Fact-checking accuracy status">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <line x1="18" y1="20" x2="18" y2="10"></line>
               <line x1="12" y1="20" x2="12" y2="4"></line>
@@ -315,7 +315,7 @@
 
           <div class="sidebar-section-title" style="margin-top: 1rem;">SAVED</div>
 
-          <button id="btn-sidebar-history" class="sidebar-nav-item" data-tooltip="Saved Documents">
+          <button id="btn-sidebar-history" class="sidebar-nav-item" data-tooltip="Switch between saved documents in session">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="12" r="10"></circle>
               <polyline points="12 6 12 12 16 14"></polyline>
@@ -327,7 +327,7 @@
 
         <!-- Bottom Telemetry & Status -->
         <div class="sidebar-footer">
-          <div class="footer-status-pill">
+          <div class="footer-status-pill" data-tooltip="Fast in-memory search without storing files">
             <span class="pill-dot pill-dot-emerald"></span>
             <span>Fast &amp; Private</span>
           </div>

@@ -1786,6 +1786,14 @@ body {
   border-right: none;
 }
 
+.veritas-tooltip.placement-right::after {
+  left: -3px;
+  top: 50%;
+  margin-top: -3px;
+  border-top: none;
+  border-right: none;
+}
+
 /* Responsive */
 @media (max-width: 1040px) {
   .veritas-workbench {
