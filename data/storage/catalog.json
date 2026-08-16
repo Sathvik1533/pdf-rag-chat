@@ -1,0 +1,26 @@
+{
+  "b15e4f1e6f14ad2d": {
+    "session_id": "user_alpha",
+    "filename": "benchmark_doc.txt",
+    "total_pages": 2,
+    "total_chunks": 10,
+    "document_size_bytes": 3629,
+    "saved_at": 1786873616.176068
+  },
+  "366f7c78c40742a8": {
+    "session_id": "user_beta",
+    "filename": "pegasus_secrets.txt",
+    "total_pages": 1,
+    "total_chunks": 1,
+    "document_size_bytes": 71,
+    "saved_at": 1786873616.615941
+  },
+  "7c854a6064c66774": {
+    "session_id": "default",
+    "filename": "team_directory.csv",
+    "total_pages": 1,
+    "total_chunks": 1,
+    "document_size_bytes": 164,
+    "saved_at": 1786873739.440856
+  }
+}

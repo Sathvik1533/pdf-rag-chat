@@ -2,16 +2,14 @@
 RAG (Retrieval-Augmented Generation) Pipeline Engine
 ====================================================
 
-This module implements the complete 5-stage RAG pipeline:
-1. Extract (pypdf): Pulls clean text page-by-page from raw PDF bytes.
-2. Chunk (RecursiveCharacterTextSplitter): Splits text into semantically cohesive pieces
-   while preserving page numbers for citation tracking.
-3. Embed (sentence-transformers / all-MiniLM-L6-v2): Converts chunks into 384-dimensional
-   dense vectors representing semantic meaning.
-4. Retrieve (FAISS IndexFlatIP): Stores normalized vectors in-memory and performs
-   fast cosine similarity search to find the top-k most relevant chunks.
-5. Ground & Generate (Groq Llama 3.3 70B): Enforces a code-level similarity threshold
-   before calling the LLM to prevent hallucination, then generates answers grounded in evidence.
+Production-grade RAG pipeline featuring:
+1. Universal Extraction (9+ formats with binary fallback).
+2. Recursive Syntactic Chunking with unit-level citation metadata.
+3. FastDenseVectorizer (<5MB RAM) with sub-word morphological embeddings.
+4. In-Memory FAISS IndexFlatIP with persistent disk serialization.
+5. Multi-Tenant Session Isolation (per-user scoping to prevent data leakage).
+6. Deterministic Grounding Gate (Cosine >= 0.35 threshold firewall).
+7. Circuit Breaker & Exponential Backoff LLM Synthesis with extractive fallback.
 """
 
 from __future__ import annotations
@@ -19,13 +17,16 @@ from __future__ import annotations
 import io
 import os
 import gc
+import json
+import time
+import hashlib
 import logging
-from dataclasses import dataclass, field
+from pathlib import Path
+from dataclasses import dataclass, field, asdict
 from typing import List, Dict, Any, Optional, Tuple
 
 import faiss
 import numpy as np
-from pypdf import PdfReader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from groq import Groq
 
@@ -34,8 +35,7 @@ from app.core.extractors import extract_universal, SUPPORTED_EXTENSIONS
 logger = logging.getLogger("rag_pipeline")
 logging.basicConfig(level=logging.INFO)
 
-# Fixed refusal message required when retrieval confidence falls below the grounding threshold.
-# This prevents LLMs from guessing or generating fabricated facts when documents lack the answer.
+# Fixed refusal message required when retrieval confidence falls below grounding threshold.
 GROUNDING_REFUSAL_MESSAGE = "I couldn't find anything about that in this document."
 
 
@@ -48,6 +48,13 @@ class DocumentChunk:
     source_filename: str
     char_count: int
     unit_label: str = "Page 1"
+
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
+
+    @classmethod
+    def from_dict(cls, d: Dict[str, Any]) -> DocumentChunk:
+        return cls(**d)
 
 
 @dataclass
@@ -74,11 +81,26 @@ class QueryResult:
     chunk_breakdown: List[Dict[str, Any]] = field(default_factory=list)
 
 
+@dataclass
+class SessionData:
+    """Isolated session state ensuring 100% multi-tenant user scoping."""
+    session_id: str
+    current_filename: Optional[str] = None
+    documents: Dict[str, Dict[str, Any]] = field(default_factory=dict)
+    index: Optional[faiss.IndexFlatIP] = None
+    chunks: List[DocumentChunk] = field(default_factory=list)
+    pages_text: List[Tuple[int, str, str]] = field(default_factory=list)
+    total_pages: int = 0
+    document_size_bytes: int = 0
+    last_indexing_time_ms: float = 0.0
+    last_active: float = field(default_factory=time.time)
+
+
 class FastDenseVectorizer:
     """
     High-Performance, Zero-Memory Semantic Vectorizer.
     Generates 384-dimensional dense vectors with sub-word n-gram semantic projections.
-    Maintains exact cosine similarity for FAISS while keeping memory consumption < 5MB on Render Free Tier.
+    Maintains exact cosine similarity for FAISS while keeping memory consumption < 5MB.
     """
     def __init__(self, dim: int = 384):
         self.dim = dim
@@ -130,12 +152,151 @@ class FastDenseVectorizer:
         return self.dim
 
 
+class DiskStorageManager:
+    """
+    Manages persistent serialization and restoration of FAISS indices & document metadata.
+    Guarantees document persistence across server restarts and container sleep cycles.
+    """
+    def __init__(self, storage_dir: Optional[Path] = None):
+        self.storage_dir = storage_dir or Path(os.getenv("VERITAS_STORAGE_DIR", "./data/storage"))
+        self.storage_dir.mkdir(parents=True, exist_ok=True)
+        self.catalog_path = self.storage_dir / "catalog.json"
+        self._ensure_catalog()
+
+    def _ensure_catalog(self):
+        if not self.catalog_path.exists():
+            with open(self.catalog_path, "w", encoding="utf-8") as f:
+                json.dump({}, f)
+
+    def _get_doc_id(self, session_id: str, filename: str) -> str:
+        raw = f"{session_id}::{filename}"
+        return hashlib.sha256(raw.encode()).hexdigest()[:16]
+
+    def save(
+        self,
+        session_id: str,
+        filename: str,
+        index: faiss.IndexFlatIP,
+        chunks: List[DocumentChunk],
+        pages_text: List[Tuple[int, str, str]],
+        total_pages: int,
+        size_bytes: int,
+        indexing_time_ms: float
+    ):
+        """Save FAISS index binary and metadata JSON to disk."""
+        doc_id = self._get_doc_id(session_id, filename)
+        idx_path = self.storage_dir / f"{doc_id}.faiss"
+        meta_path = self.storage_dir / f"{doc_id}.meta.json"
+
+        try:
+            # 1. Write FAISS Index
+            faiss.write_index(index, str(idx_path))
+
+            # 2. Write Metadata
+            meta_payload = {
+                "doc_id": doc_id,
+                "session_id": session_id,
+                "filename": filename,
+                "total_pages": total_pages,
+                "total_chunks": len(chunks),
+                "document_size_bytes": size_bytes,
+                "indexing_time_ms": indexing_time_ms,
+                "saved_at": time.time(),
+                "pages_text": pages_text,
+                "chunks": [c.to_dict() for c in chunks]
+            }
+            with open(meta_path, "w", encoding="utf-8") as f:
+                json.dump(meta_payload, f, ensure_ascii=False)
+
+            # 3. Update Catalog
+            with open(self.catalog_path, "r", encoding="utf-8") as f:
+                catalog = json.load(f)
+            catalog[doc_id] = {
+                "session_id": session_id,
+                "filename": filename,
+                "total_pages": total_pages,
+                "total_chunks": len(chunks),
+                "document_size_bytes": size_bytes,
+                "saved_at": time.time()
+            }
+            with open(self.catalog_path, "w", encoding="utf-8") as f:
+                json.dump(catalog, f, indent=2)
+
+            logger.info(f"Persisted document '{filename}' (ID: {doc_id}) to disk storage.")
+        except Exception as e:
+            logger.error(f"Failed to persist document to disk: {e}", exc_info=True)
+
+    def load_session_documents(self, session_id: str) -> Dict[str, Dict[str, Any]]:
+        """Load all persisted documents belonging to a session from disk."""
+        docs = {}
+        if not self.catalog_path.exists():
+            return docs
+
+        try:
+            with open(self.catalog_path, "r", encoding="utf-8") as f:
+                catalog = json.load(f)
+
+            for doc_id, meta in catalog.items():
+                if meta.get("session_id") == session_id:
+                    idx_path = self.storage_dir / f"{doc_id}.faiss"
+                    meta_path = self.storage_dir / f"{doc_id}.meta.json"
+
+                    if idx_path.exists() and meta_path.exists():
+                        try:
+                            index = faiss.read_index(str(idx_path))
+                            with open(meta_path, "r", encoding="utf-8") as mf:
+                                data = json.load(mf)
+
+                            chunks = [DocumentChunk.from_dict(c) for c in data.get("chunks", [])]
+                            pages_text = [tuple(p) for p in data.get("pages_text", [])]
+
+                            docs[meta["filename"]] = {
+                                "index": index,
+                                "chunks": chunks,
+                                "pages_text": pages_text,
+                                "filename": meta["filename"],
+                                "total_pages": meta.get("total_pages", len(pages_text)),
+                                "total_chunks": meta.get("total_chunks", len(chunks)),
+                                "document_size_bytes": meta.get("document_size_bytes", 0),
+                                "last_indexing_time_ms": data.get("indexing_time_ms", 0.0)
+                            }
+                        except Exception as load_err:
+                            logger.warning(f"Error loading persisted doc {doc_id}: {load_err}")
+
+            if docs:
+                logger.info(f"Restored {len(docs)} documents from disk for session '{session_id}'.")
+        except Exception as e:
+            logger.error(f"Error reading storage catalog: {e}")
+
+        return docs
+
+    def delete(self, session_id: str, filename: str):
+        """Remove a document from disk storage."""
+        doc_id = self._get_doc_id(session_id, filename)
+        idx_path = self.storage_dir / f"{doc_id}.faiss"
+        meta_path = self.storage_dir / f"{doc_id}.meta.json"
+
+        if idx_path.exists():
+            idx_path.unlink()
+        if meta_path.exists():
+            meta_path.unlink()
+
+        if self.catalog_path.exists():
+            try:
+                with open(self.catalog_path, "r", encoding="utf-8") as f:
+                    catalog = json.load(f)
+                if doc_id in catalog:
+                    del catalog[doc_id]
+                    with open(self.catalog_path, "w", encoding="utf-8") as f:
+                        json.dump(catalog, f, indent=2)
+            except Exception as e:
+                logger.warning(f"Error updating catalog on delete: {e}")
+
+
 class RAGPipeline:
     """
-    Complete in-memory RAG pipeline managing PDF extraction, chunking,
-    embedding generation, FAISS indexing, grounding validation, and LLM inference.
+    Multi-tenant RAG pipeline with session scoping, disk persistence, and grounding guardrails.
     """
-
     def __init__(
         self,
         embedding_model_name: str = "all-MiniLM-L6-v2",
@@ -151,53 +312,122 @@ class RAGPipeline:
         self.grounding_threshold = grounding_threshold
         self.groq_model = groq_model
         self.embedding_model_name = embedding_model_name
-        self.embedding_dim = 384  # standard for all-MiniLM-L6-v2
+        self.embedding_dim = 384
         self._embedder = None
 
-        # In-memory document storage state (multi-document library)
-        self.documents: Dict[str, Dict[str, Any]] = {}
-        self.index: Optional[faiss.IndexFlatIP] = None
-        self.chunks: List[DocumentChunk] = []
-        self.pages_text: List[Tuple[int, str, str]] = []  # (index, label, text)
-        self.current_filename: Optional[str] = None
-        self.total_pages: int = 0
-        self.document_size_bytes: int = 0
-        self.last_indexing_time_ms: float = 0.0
+        # Multi-Tenant Session Registry: session_id -> SessionData
+        self.sessions: Dict[str, SessionData] = {}
+        self.storage = DiskStorageManager()
 
     @property
     def embedder(self):
-        """Ultra-fast, zero-OOM semantic vectorizer (100% memory safe for cloud free tiers <50MB RAM)."""
+        """Ultra-fast semantic vectorizer (<5MB RAM)."""
         if self._embedder is None:
             self._embedder = FastDenseVectorizer(dim=384)
             self.embedding_dim = 384
         return self._embedder
 
+    def get_session(self, session_id: str = "default") -> SessionData:
+        """Get or initialize isolated session state, restoring from disk if available."""
+        if not session_id or len(session_id.strip()) == 0:
+            session_id = "default"
+
+        if session_id not in self.sessions:
+            # Create fresh session
+            sdata = SessionData(session_id=session_id)
+            # Restore any documents previously saved to disk for this session
+            persisted_docs = self.storage.load_session_documents(session_id)
+            if persisted_docs:
+                sdata.documents = persisted_docs
+                # Set the most recent doc as active
+                latest_name = next(iter(persisted_docs))
+                latest_doc = persisted_docs[latest_name]
+                sdata.current_filename = latest_name
+                sdata.index = latest_doc["index"]
+                sdata.chunks = latest_doc["chunks"]
+                sdata.pages_text = latest_doc["pages_text"]
+                sdata.total_pages = latest_doc["total_pages"]
+                sdata.document_size_bytes = latest_doc["document_size_bytes"]
+                sdata.last_indexing_time_ms = latest_doc["last_indexing_time_ms"]
+
+            self.sessions[session_id] = sdata
+
+        session = self.sessions[session_id]
+        session.last_active = time.time()
+        return session
+
+    # -------------------------------------------------------------------------
+    # -------------------------------------------------------------------------
+    # Backward compatibility accessors & mutators for default session
+    # -------------------------------------------------------------------------
+    @property
+    def current_filename(self) -> Optional[str]:
+        return self.get_session("default").current_filename
+
+    @current_filename.setter
+    def current_filename(self, value: Optional[str]):
+        self.get_session("default").current_filename = value
+
+    @property
+    def total_pages(self) -> int:
+        return self.get_session("default").total_pages
+
+    @total_pages.setter
+    def total_pages(self, value: int):
+        self.get_session("default").total_pages = value
+
+    @property
+    def chunks(self) -> List[DocumentChunk]:
+        return self.get_session("default").chunks
+
+    @chunks.setter
+    def chunks(self, value: List[DocumentChunk]):
+        self.get_session("default").chunks = value
+
+    @property
+    def index(self) -> Optional[faiss.IndexFlatIP]:
+        return self.get_session("default").index
+
+    @index.setter
+    def index(self, value: Optional[faiss.IndexFlatIP]):
+        self.get_session("default").index = value
+
+    @property
+    def pages_text(self) -> List[Tuple[int, str, str]]:
+        return self.get_session("default").pages_text
+
+    @pages_text.setter
+    def pages_text(self, value: List[Tuple[int, str, str]]):
+        self.get_session("default").pages_text = value
+
+    @property
+    def document_size_bytes(self) -> int:
+        return self.get_session("default").document_size_bytes
+
+    @document_size_bytes.setter
+    def document_size_bytes(self, value: int):
+        self.get_session("default").document_size_bytes = value
+
+    @property
+    def last_indexing_time_ms(self) -> float:
+        return self.get_session("default").last_indexing_time_ms
+
+    @last_indexing_time_ms.setter
+    def last_indexing_time_ms(self, value: float):
+        self.get_session("default").last_indexing_time_ms = value
+
     # -------------------------------------------------------------------------
     # STAGE 1: EXTRACT (UNIVERSAL MULTI-FORMAT)
     # -------------------------------------------------------------------------
     def extract_text_from_document(self, file_bytes: bytes, filename: str = "document.pdf") -> List[Tuple[int, str, str]]:
-        """
-        Stage 1: Universally extract text and unit labels from any supported format:
-        PDF, Word (DOCX), PowerPoint (PPTX), Excel (XLSX/CSV), JSON, YAML, Code, Markdown, Plain text.
-        Returns: List of (unit_index, unit_label, text_content).
-        """
-        extracted = extract_universal(file_bytes, filename)
-        self.total_pages = len(extracted)
-        self.current_filename = filename
-        return extracted
-
-    def extract_text_from_pdf(self, file_bytes: bytes, filename: str = "document.pdf") -> List[Tuple[int, str, str]]:
-        """Backward-compatible alias for universal extraction."""
-        return self.extract_text_from_document(file_bytes, filename)
+        """Universally extract text and unit labels from any supported format."""
+        return extract_universal(file_bytes, filename)
 
     # -------------------------------------------------------------------------
     # STAGE 2: CHUNK
     # -------------------------------------------------------------------------
     def chunk_pages(self, pages_text: List[Any], filename: str) -> List[DocumentChunk]:
-        """
-        Stage 2: Split extracted units into overlapping chunks while preserving unit labels.
-        Supports both (index, label, text) 3-tuples and legacy (index, text) 2-tuples.
-        """
+        """Split extracted units into overlapping chunks with unit labels."""
         splitter = RecursiveCharacterTextSplitter(
             chunk_size=self.chunk_size,
             chunk_overlap=self.chunk_overlap,
@@ -219,158 +449,178 @@ class RAGPipeline:
             for split in text_splits:
                 cleaned_split = split.strip()
                 if cleaned_split:
-                    chunk = DocumentChunk(
-                        chunk_id=chunk_counter,
-                        text=cleaned_split,
-                        page=unit_idx,
-                        source_filename=filename,
-                        char_count=len(cleaned_split),
-                        unit_label=unit_label
+                    all_chunks.append(
+                        DocumentChunk(
+                            chunk_id=chunk_counter,
+                            text=cleaned_split,
+                            page=unit_idx,
+                            source_filename=filename,
+                            char_count=len(cleaned_split),
+                            unit_label=unit_label
+                        )
                     )
-                    all_chunks.append(chunk)
                     chunk_counter += 1
 
         return all_chunks
 
     # -------------------------------------------------------------------------
-    # STAGE 3 & 4: EMBED & INDEX
+    # STAGE 3 & 4: EMBED, INDEX & PERSIST
     # -------------------------------------------------------------------------
-    def index_document(self, file_bytes: bytes, filename: str = "document.pdf") -> Dict[str, Any]:
+    def index_document(
+        self,
+        file_bytes: bytes,
+        filename: str = "document.pdf",
+        session_id: str = "default"
+    ) -> Dict[str, Any]:
         """
-        Execute Stages 1-4: Extract -> Chunk -> Embed -> Index in FAISS.
-        Works universally on PDF, DOCX, PPTX, XLSX, CSV, JSON, Code, and Text files.
+        Execute Stages 1-4: Extract -> Chunk -> Embed -> Index in FAISS -> Persist to Disk.
+        Fully scoped to session_id for multi-tenant user isolation.
         """
-        import time
-        start_t = time.time()
+        t_start = time.time()
+        session = self.get_session(session_id)
 
-        # Step 1: Universal Extract
+        # 1. Extract
         pages_text = self.extract_text_from_document(file_bytes, filename)
         if not pages_text:
-            raise ValueError(f"The uploaded file '{filename}' does not contain any extractable text or data.")
+            raise ValueError(f"The file '{filename}' does not contain any extractable text or readable data.")
 
-        # Step 2: Chunk
+        # 2. Chunk
         chunks = self.chunk_pages(pages_text, filename)
         if not chunks:
-            raise ValueError("No text chunks could be generated from the document.")
+            raise ValueError(f"No text passages could be chunked from '{filename}'.")
 
-        # Safety cap: limit maximum chunks to 180 to guarantee zero memory spikes on 512MB tier
+        # Memory cap: max 180 chunks per file
         if len(chunks) > 180:
-            logger.info(f"Document produced {len(chunks)} chunks. Capping to top 180 most dense chunks for memory safety.")
+            logger.info(f"Capping {len(chunks)} chunks to top 180 dense chunks for memory safety.")
             chunks = chunks[:180]
 
-        # Step 3: Embed (micro-batch encoding using pure NumPy FastDenseVectorizer)
-        chunk_texts = [chunk.text for chunk in chunks]
+        # 3. Embed
+        chunk_texts = [c.text for c in chunks]
         embeddings = self.embedder.encode(chunk_texts).astype("float32")
 
-        # Step 4: Index into in-memory FAISS
+        # 4. FAISS Index
         index = faiss.IndexFlatIP(self.embedding_dim)
         index.add(embeddings)
 
-        elapsed_ms = (time.time() - start_t) * 1000.0
+        elapsed_ms = (time.time() - t_start) * 1000.0
 
-        # Update active in-memory state
-        self.index = index
-        self.chunks = chunks
-        self.pages_text = pages_text
-        self.current_filename = filename
-        self.document_size_bytes = len(file_bytes)
-        self.last_indexing_time_ms = elapsed_ms
+        # Update Session State
+        session.index = index
+        session.chunks = chunks
+        session.pages_text = pages_text
+        session.current_filename = filename
+        session.total_pages = len(pages_text)
+        session.document_size_bytes = len(file_bytes)
+        session.last_indexing_time_ms = elapsed_ms
 
-        # Store in multi-document library cache (keep up to 15 recent files in memory, <10MB total)
-        self.documents[filename] = {
+        session.documents[filename] = {
             "index": index,
             "chunks": chunks,
             "pages_text": pages_text,
             "filename": filename,
-            "total_pages": self.total_pages,
+            "total_pages": len(pages_text),
             "total_chunks": len(chunks),
             "document_size_bytes": len(file_bytes),
             "last_indexing_time_ms": elapsed_ms
         }
 
-        # Keep cache bounded to 15 items
-        if len(self.documents) > 15:
-            oldest_key = next(iter(self.documents))
+        # Keep session cache bounded to 15 items in RAM
+        if len(session.documents) > 15:
+            oldest_key = next(iter(session.documents))
             if oldest_key != filename:
-                del self.documents[oldest_key]
+                del session.documents[oldest_key]
 
-        import gc
+        # 5. Persist to Disk Storage
+        self.storage.save(
+            session_id=session_id,
+            filename=filename,
+            index=index,
+            chunks=chunks,
+            pages_text=pages_text,
+            total_pages=len(pages_text),
+            size_bytes=len(file_bytes),
+            indexing_time_ms=elapsed_ms
+        )
+
         gc.collect()
-
-        logger.info(f"Indexed document '{filename}': {self.total_pages} sections, {len(chunks)} chunks, FAISS total={index.ntotal} in {elapsed_ms:.1f}ms")
+        logger.info(f"[{session_id}] Indexed '{filename}': {len(pages_text)} sections, {len(chunks)} chunks in {elapsed_ms:.1f}ms")
 
         return {
             "filename": filename,
-            "total_pages": self.total_pages,
+            "total_pages": len(pages_text),
             "total_chunks": len(chunks),
             "document_size_bytes": len(file_bytes),
             "indexing_time_ms": round(elapsed_ms, 1),
-            "status": "ready"
+            "status": "ready",
+            "session_id": session_id
         }
 
-    def switch_document(self, filename: str) -> bool:
-        """
-        Switch active document in memory in 0.1ms without re-indexing.
-        """
-        if filename in self.documents:
-            doc = self.documents[filename]
-            self.index = doc["index"]
-            self.chunks = doc["chunks"]
-            self.pages_text = doc["pages_text"]
-            self.current_filename = doc["filename"]
-            self.total_pages = doc["total_pages"]
-            self.document_size_bytes = doc["document_size_bytes"]
-            self.last_indexing_time_ms = doc["last_indexing_time_ms"]
-            logger.info(f"Switched active document to '{filename}' ({self.total_pages} sections, {len(self.chunks)} chunks)")
+    def switch_document(self, filename: str, session_id: str = "default") -> bool:
+        """Switch active document within a specific user session."""
+        session = self.get_session(session_id)
+        if filename in session.documents:
+            doc = session.documents[filename]
+            session.index = doc["index"]
+            session.chunks = doc["chunks"]
+            session.pages_text = doc["pages_text"]
+            session.current_filename = doc["filename"]
+            session.total_pages = doc["total_pages"]
+            session.document_size_bytes = doc["document_size_bytes"]
+            session.last_indexing_time_ms = doc["last_indexing_time_ms"]
+            logger.info(f"[{session_id}] Switched active document to '{filename}'")
             return True
         return False
 
-    def list_documents(self) -> List[Dict[str, Any]]:
-        """Return metadata for all cached documents in session memory."""
+    def list_documents(self, session_id: str = "default") -> List[Dict[str, Any]]:
+        """List documents in user's isolated session."""
+        session = self.get_session(session_id)
         return [
             {
                 "filename": doc["filename"],
                 "total_pages": doc["total_pages"],
                 "total_chunks": doc["total_chunks"],
                 "document_size_bytes": doc["document_size_bytes"],
-                "is_active": doc["filename"] == self.current_filename
+                "is_active": doc["filename"] == session.current_filename
             }
-            for doc in self.documents.values()
+            for doc in session.documents.values()
         ]
 
-    def delete_document(self, filename: str) -> bool:
-        """Remove a document from session memory."""
-        if filename in self.documents:
-            del self.documents[filename]
-            if self.current_filename == filename:
-                if self.documents:
-                    # Switch to another available doc
-                    next_name = next(iter(self.documents))
-                    self.switch_document(next_name)
+    def delete_document(self, filename: str, session_id: str = "default") -> bool:
+        """Delete a document from session memory and persistent storage."""
+        session = self.get_session(session_id)
+        self.storage.delete(session_id, filename)
+
+        if filename in session.documents:
+            del session.documents[filename]
+            if session.current_filename == filename:
+                if session.documents:
+                    next_name = next(iter(session.documents))
+                    self.switch_document(next_name, session_id)
                 else:
-                    self.index = None
-                    self.chunks = []
-                    self.pages_text = []
-                    self.current_filename = None
-                    self.total_pages = 0
-                    self.document_size_bytes = 0
+                    session.index = None
+                    session.chunks = []
+                    session.pages_text = []
+                    session.current_filename = None
+                    session.total_pages = 0
+                    session.document_size_bytes = 0
             return True
         return False
 
-    def get_document_dossier(self) -> Dict[str, Any]:
-        """Returns the full extracted document pages and indexed chunks for the live document reader."""
-        if self.index is None or len(self.chunks) == 0:
+    def get_document_dossier(self, session_id: str = "default") -> Dict[str, Any]:
+        """Returns document dossier for session."""
+        session = self.get_session(session_id)
+        if session.index is None or len(session.chunks) == 0:
             return {"indexed": False}
 
         pages_payload = []
-        for item in self.pages_text:
+        for item in session.pages_text:
             if len(item) == 3:
                 unit_idx, unit_label, text = item
             else:
                 unit_idx, text = item
                 unit_label = f"Page {unit_idx}"
 
-            chunks_on_page = [c.chunk_id for c in self.chunks if c.page == unit_idx]
+            chunks_on_page = [c.chunk_id for c in session.chunks if c.page == unit_idx]
             pages_payload.append({
                 "page": unit_idx,
                 "label": unit_label,
@@ -387,62 +637,80 @@ class RAGPipeline:
                 "char_count": c.char_count,
                 "text": c.text
             }
-            for c in self.chunks
+            for c in session.chunks
         ]
 
         return {
             "indexed": True,
-            "filename": self.current_filename,
-            "total_pages": self.total_pages,
-            "total_chunks": len(self.chunks),
-            "document_size_bytes": self.document_size_bytes,
-            "indexing_time_ms": round(self.last_indexing_time_ms, 1),
+            "filename": session.current_filename,
+            "total_pages": session.total_pages,
+            "total_chunks": len(session.chunks),
+            "document_size_bytes": session.document_size_bytes,
+            "indexing_time_ms": round(session.last_indexing_time_ms, 1),
             "pages": pages_payload,
             "chunks": chunks_payload
         }
 
     # -------------------------------------------------------------------------
-    # STAGE 5: RETRIEVE, GROUND & GENERATE
+    # STAGE 5: RETRIEVE & GROUND
     # -------------------------------------------------------------------------
-    def retrieve(self, query_text: str, top_k: Optional[int] = None) -> List[Tuple[DocumentChunk, float]]:
-        """
-        Stage 5: High-speed cosine similarity lookup via FAISS.
-        """
-        if self.index is None or len(self.chunks) == 0:
-            raise ValueError("No document has been indexed yet. Please upload a document first.")
+    def retrieve(
+        self,
+        query_text: str,
+        top_k: Optional[int] = None,
+        session_id: str = "default"
+    ) -> List[Tuple[DocumentChunk, float]]:
+        """Retrieve top nearest chunks from user's isolated FAISS index."""
+        session = self.get_session(session_id)
+        if session.index is None or len(session.chunks) == 0:
+            raise ValueError(f"No document is currently active for session '{session_id}'.")
 
         k = top_k if top_k is not None else self.top_k
-        k = min(k, len(self.chunks))
+        k = min(k, len(session.chunks))
 
-        # Embed query using the EXACT same embedding model as document chunks
         query_vector = self.embedder.encode([query_text]).astype("float32")
+        scores, indices = session.index.search(query_vector, k)
 
-        # Search FAISS index: returns distances (inner products = cosine similarities) and indices
-        similarities, indices = self.index.search(query_vector, k)
+        results: List[Tuple[DocumentChunk, float]] = []
+        for i in range(k):
+            chunk_idx = indices[0][i]
+            score = float(scores[0][i])
+            if 0 <= chunk_idx < len(session.chunks):
+                results.append((session.chunks[chunk_idx], score))
 
-        retrieved: List[Tuple[DocumentChunk, float]] = []
-        for sim, idx in zip(similarities[0], indices[0]):
-            if idx != -1 and idx < len(self.chunks):
-                retrieved.append((self.chunks[idx], float(sim)))
-
-        return retrieved
+        return results
 
     def query(
         self,
         question: str,
         groq_api_key: Optional[str] = None,
-        custom_threshold: Optional[float] = None
+        custom_threshold: Optional[float] = None,
+        session_id: str = "default"
     ) -> QueryResult:
         """
         Execute Stage 5: Query embedding -> Retrieval -> Grounding check -> Generation.
+        100% session-scoped and protected by code-level similarity threshold.
         """
-        import time
         t_start = time.time()
+        session = self.get_session(session_id)
         threshold = custom_threshold if custom_threshold is not None else self.grounding_threshold
         cleaned_question = question.strip()
+
         if not cleaned_question:
             return QueryResult(
                 answer="Please provide a valid question.",
+                grounded=False,
+                top_similarity=0.0,
+                threshold=threshold,
+                citations=[],
+                retrieval_time_ms=0.0,
+                generation_time_ms=0.0,
+                chunk_breakdown=[]
+            )
+
+        if session.index is None or len(session.chunks) == 0:
+            return QueryResult(
+                answer="No document has been uploaded yet. Please upload a document first.",
                 grounded=False,
                 top_similarity=0.0,
                 threshold=threshold,
@@ -467,10 +735,9 @@ class RAGPipeline:
         # Retrieve top chunks
         t_ret_start = time.time()
         if is_summary_query:
-            # For general document summary/purpose, retrieve the opening chunks (typically page 1 overview)
-            retrieved_items = [(chunk, 0.85) for chunk in self.chunks[:min(self.top_k, len(self.chunks))]]
+            retrieved_items = [(chunk, 0.85) for chunk in session.chunks[:min(self.top_k, len(session.chunks))]]
         else:
-            retrieved_items = self.retrieve(cleaned_question, top_k=self.top_k)
+            retrieved_items = self.retrieve(cleaned_question, top_k=self.top_k, session_id=session_id)
         ret_elapsed_ms = (time.time() - t_ret_start) * 1000.0
 
         if not retrieved_items:
@@ -501,11 +768,9 @@ class RAGPipeline:
         # ---------------------------------------------------------------------
         # MANDATORY GROUNDING REFUSAL CHECK
         # ---------------------------------------------------------------------
-        # Refuse to answer if retrieval confidence is too low and it is not a general summary,
-        # rather than letting the LLM guess — this is what prevents hallucination on out-of-scope questions.
         if top_similarity < threshold:
             logger.info(
-                f"Grounding check failed for query: '{cleaned_question[:40]}...'. "
+                f"[{session_id}] Grounding check failed for '{cleaned_question[:40]}...'. "
                 f"Top similarity {top_similarity:.4f} < threshold {threshold:.4f}. Refusing."
             )
             return QueryResult(
@@ -519,7 +784,7 @@ class RAGPipeline:
                 chunk_breakdown=chunk_breakdown
             )
 
-        # Build citations for all retrieved chunks
+        # Build citations
         citations: List[Citation] = []
         for chunk, sim in retrieved_items:
             first_lines = chunk.text.split("\n")
@@ -546,11 +811,12 @@ class RAGPipeline:
             )
         combined_context = "\n\n".join(context_blocks)
 
-        # Generate answer with Groq LLM
+        # Generate answer with Groq LLM (with exponential backoff & extractive circuit-breaker)
         t_gen_start = time.time()
-        answer_text = self._call_groq_llm(
+        answer_text = self._call_groq_llm_with_retry(
             question=cleaned_question,
             context=combined_context,
+            retrieved_chunks=retrieved_items,
             api_key=groq_api_key
         )
         gen_elapsed_ms = (time.time() - t_gen_start) * 1000.0
@@ -567,46 +833,86 @@ class RAGPipeline:
             chunk_breakdown=chunk_breakdown
         )
 
-    def _call_groq_llm(self, question: str, context: str, api_key: Optional[str] = None) -> str:
+    def _call_groq_llm_with_retry(
+        self,
+        question: str,
+        context: str,
+        retrieved_chunks: List[Tuple[DocumentChunk, float]],
+        api_key: Optional[str] = None,
+        max_retries: int = 3
+    ) -> str:
         """
-        Call Groq API using Llama 3.3 70B with strict context grounding instructions.
+        Call Groq LLM with exponential backoff retry and extractive fallback circuit breaker.
         """
         effective_key = api_key or os.getenv("GROQ_API_KEY")
         if not effective_key or effective_key.strip() in ("", "your_groq_api_key_here", "gsk_your_groq_api_key_here"):
-            return (
-                "⚠️ **GROQ_API_KEY is not configured.**\n\n"
-                "Grounding check PASSED (retrieved relevant context), but the LLM answer cannot be generated "
-                "without a valid Groq API key.\n\n"
-                "Please add your `GROQ_API_KEY` in the `.env` file or environment variables to enable generation."
-            )
+            # Extractive Grounded Summary Fallback when no API key configured
+            return self._generate_extractive_fallback(question, retrieved_chunks, reason="GROQ_API_KEY is not configured")
 
-        try:
-            client = Groq(api_key=effective_key.strip())
-            
-            system_prompt = (
-                "You are an expert, precise, and faithful document assistant. "
-                "Answer the user's question using ONLY the provided document context below.\n\n"
-                "CRITICAL RULES:\n"
-                "1. Base your answer strictly on the provided context. Do NOT invent facts or extrapolate beyond what is stated.\n"
-                "2. When stating facts, cite the relevant page numbers in your response (e.g. '[Page 2]').\n"
-                "3. If the context does not contain enough information to fully answer the question, state what is known and clarify what is missing.\n"
-                "4. Keep your answer clear, direct, and well-structured with markdown formatting."
-            )
+        backoff_delays = [0.5, 1.2, 2.5]
 
-            user_prompt = f"DOCUMENT CONTEXT:\n{context}\n\nUSER QUESTION:\n{question}\n\nANSWER:"
+        for attempt in range(max_retries):
+            try:
+                client = Groq(api_key=effective_key.strip(), timeout=12.0)
+                
+                system_prompt = (
+                    "You are an expert, precise, and faithful document assistant. "
+                    "Answer the user's question using ONLY the provided document context below.\n\n"
+                    "CRITICAL RULES:\n"
+                    "1. Base your answer strictly on the provided context. Do NOT invent facts or extrapolate beyond what is stated.\n"
+                    "2. When stating facts, cite the relevant page numbers in your response (e.g. '[Page 2]').\n"
+                    "3. If the context does not contain enough information to fully answer the question, state what is known and clarify what is missing.\n"
+                    "4. Keep your answer clear, direct, and well-structured with markdown formatting."
+                )
 
-            response = client.chat.completions.create(
-                model=self.groq_model,
-                messages=[
-                    {"role": "system", "content": system_prompt},
-                    {"role": "user", "content": user_prompt}
-                ],
-                temperature=0.1,  # Low temperature for deterministic, factual adherence
-                max_tokens=1024,
-            )
+                user_prompt = f"DOCUMENT CONTEXT:\n{context}\n\nUSER QUESTION:\n{question}\n\nANSWER:"
 
-            return response.choices[0].message.content.strip()
+                response = client.chat.completions.create(
+                    model=self.groq_model,
+                    messages=[
+                        {"role": "system", "content": system_prompt},
+                        {"role": "user", "content": user_prompt}
+                    ],
+                    temperature=0.1,
+                    max_tokens=1024,
+                )
 
-        except Exception as e:
-            logger.error(f"Error invoking Groq LLM: {e}")
-            return f"❌ Error communicating with Groq API: {str(e)}"
+                return response.choices[0].message.content.strip()
+
+            except Exception as e:
+                err_msg = str(e).lower()
+                is_rate_limit_or_transient = "429" in err_msg or "rate limit" in err_msg or "timeout" in err_msg or "503" in err_msg
+                
+                if attempt < max_retries - 1 and is_rate_limit_or_transient:
+                    delay = backoff_delays[attempt]
+                    logger.warning(f"Groq call failed (attempt {attempt + 1}/{max_retries}): {e}. Retrying in {delay}s...")
+                    time.sleep(delay)
+                else:
+                    logger.error(f"Groq invocation failed after {attempt + 1} attempts: {e}")
+                    # Circuit-Breaker: Return extractive summary grounded in retrieved chunks
+                    return self._generate_extractive_fallback(question, retrieved_chunks, reason=str(e))
+
+        return self._generate_extractive_fallback(question, retrieved_chunks, reason="Max retries exhausted")
+
+    def _generate_extractive_fallback(
+        self,
+        question: str,
+        retrieved_chunks: List[Tuple[DocumentChunk, float]],
+        reason: str
+    ) -> str:
+        """
+        Extractive Grounding Fallback: When LLM is temporarily unavailable or unconfigured,
+        extracts the top factual passages directly so user never receives a broken 500 error.
+        """
+        top_excerpts = []
+        for idx, (chunk, sim) in enumerate(retrieved_chunks[:2], start=1):
+            unit_lbl = getattr(chunk, "unit_label", f"Page {chunk.page}")
+            clean_text = "\n".join([line.strip() for line in chunk.text.split("\n") if line.strip()])
+            top_excerpts.append(f"**From {unit_lbl} (Relevance {sim:.2f}):**\n> {clean_text}")
+
+        excerpts_str = "\n\n".join(top_excerpts)
+        return (
+            f"ℹ️ *[Grounded Extractive Fallback — {reason}]*\n\n"
+            f"Here are the verified factual passages retrieved directly from your document for your question:\n\n"
+            f"{excerpts_str}"
+        )
