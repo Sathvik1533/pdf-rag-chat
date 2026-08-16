@@ -1487,6 +1487,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let activeCaptionBar = null;
     let ttsHeartbeat = null;
+    let ttsSafetyTimeout = null;
 
     speakBtn.addEventListener('click', () => {
       if (!('speechSynthesis' in window)) {
@@ -1494,23 +1495,32 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      // If currently speaking, STOP immediately
+      // 1. If currently speaking, immediately call cancel() and reset UI
       if (speakBtn.classList.contains('speaking') || window.speechSynthesis.speaking) {
-        window.speechSynthesis.cancel();
+        try {
+          window.speechSynthesis.cancel();
+        } catch (err) {
+          console.warn('Error calling speechSynthesis.cancel():', err);
+        }
         cleanupTTS();
         return;
       }
 
-      // Clear any prior speech queue
-      window.speechSynthesis.cancel();
+      // 2. Pre-emptively cancel any lingering audio queue before starting fresh speech
+      try {
+        window.speechSynthesis.cancel();
+      } catch (err) {}
+
       if (window.speechSynthesis.paused) {
-        window.speechSynthesis.resume();
+        try {
+          window.speechSynthesis.resume();
+        } catch (err) {}
       }
 
       const plainText = data.answer.replace(/[*_#`[\]()]/g, '').trim();
       if (!plainText) return;
 
-      // 1. Update Button to Active "Stop Audio" State with Animated Waveform
+      // 3. Update Button to Active "Stop Audio" State with Animated Waveform
       speakBtn.classList.add('speaking');
       speakBtn.innerHTML = `
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1526,7 +1536,7 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
       `;
 
-      // 2. Add Live Captions Subtitle Box
+      // 4. Add Live Captions Subtitle Box
       activeCaptionBar = document.createElement('div');
       activeCaptionBar.className = 'tts-live-caption-bar';
       activeCaptionBar.innerHTML = `
@@ -1535,12 +1545,12 @@ document.addEventListener('DOMContentLoaded', () => {
       `;
       bubble.appendChild(activeCaptionBar);
 
-      // 3. Highlight message bubble
+      // 5. Highlight message bubble
       textBody.classList.add('tts-speaking-active');
 
-      // 4. Create Utterance and pin globally to avoid Chrome garbage collection
+      // 6. Create Utterance and pin globally to avoid Chrome garbage collection
       const utterance = new SpeechSynthesisUtterance(plainText);
-      window._activeTTSUtterance = utterance; // Pin to window
+      window._activeTTSUtterance = utterance; // Pin to global window
       utterance.rate = 1.0;
       utterance.pitch = 1.0;
       utterance.volume = 1.0;
@@ -1575,11 +1585,21 @@ document.addEventListener('DOMContentLoaded', () => {
       };
 
       utterance.onerror = (e) => {
-        console.warn('TTS playback error:', e);
+        console.warn('TTS playback error / ended:', e);
         cleanupTTS();
       };
 
-      // Chrome Heartbeat to prevent premature audio pause
+      // 7. Safety Timeout (30s) to force-reset if browser drops speech or stalls
+      clearTimeout(ttsSafetyTimeout);
+      ttsSafetyTimeout = setTimeout(() => {
+        if (speakBtn.classList.contains('speaking')) {
+          console.warn('TTS safety timeout (30s) triggered. Resetting UI state.');
+          try { window.speechSynthesis.cancel(); } catch (err) {}
+          cleanupTTS();
+        }
+      }, 30000);
+
+      // Chrome Heartbeat to prevent premature pause
       clearInterval(ttsHeartbeat);
       ttsHeartbeat = setInterval(() => {
         if (window.speechSynthesis.speaking) {
@@ -1588,12 +1608,14 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
           clearInterval(ttsHeartbeat);
         }
-      }, 10000);
+      }, 8000);
 
       window.speechSynthesis.speak(utterance);
     });
 
     function cleanupTTS() {
+      clearTimeout(ttsSafetyTimeout);
+      ttsSafetyTimeout = null;
       clearInterval(ttsHeartbeat);
       ttsHeartbeat = null;
       window._activeTTSUtterance = null;
@@ -1878,11 +1900,31 @@ document.addEventListener('DOMContentLoaded', () => {
       }
       document.querySelectorAll('.speak-btn.speaking').forEach(b => {
         b.classList.remove('speaking');
-        b.querySelector('span').textContent = 'Read Aloud';
+        b.innerHTML = `
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+          </svg>
+          <span>Read Aloud</span>
+        `;
       });
+      document.querySelectorAll('.tts-live-caption-bar').forEach(el => el.remove());
+      document.querySelectorAll('.tts-speaking-active').forEach(el => el.classList.remove('tts-speaking-active'));
       document.querySelectorAll('.passage-highlight').forEach(el => {
         el.classList.remove('passage-highlight');
       });
+    }
+  });
+
+  // --------------------------------------------------------------------------
+  // Tab Visibility Lifecycle Management (Resumes or cleans up TTS on tab switch)
+  // --------------------------------------------------------------------------
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden && 'speechSynthesis' in window) {
+      // Returned from background tab - resume audio subsystem if paused
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+      }
     }
   });
 });
