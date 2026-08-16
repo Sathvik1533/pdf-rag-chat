@@ -721,21 +721,44 @@ class RAGPipeline:
             )
 
         import re
-        # Check if the query is asking for a general document overview, purpose, reason to read, or summary
-        summary_intent_pattern = (
-            r"(what is this (doc|document|pdf|file|paper)|summarize|summary|overview|"
-            r"what does this (doc|document|pdf|file)|explain this (doc|document|pdf)|"
-            r"tell me about this (doc|document|pdf)|why (do i|should i|must i|read|care)|"
-            r"why (is|was) this (doc|document|pdf|file)|purpose of (this|the) (doc|document|pdf|file)|"
-            r"who (should read|is this for)|takeaways|what (can i learn|will i learn)|"
-            r"tldr|introduction|main (points|objectives|takeaways|goals))"
+        q_lower = cleaned_question.lower()
+
+        # 1. Broad Document & Project Meta-Intent Detection
+        # Detects natural user questions asking about the document/project/topic/purpose/overview/summary
+        is_about_doc = (
+            ("about" in q_lower and any(w in q_lower for w in ["project", "document", "doc", "pdf", "file", "paper", "this", "our", "work", "system", "initiative", "guide"])) or
+            (any(p in q_lower for p in [
+                "what is this", "what was this", "what does this", "what is the project", "what was the project",
+                "tell me about", "explain this", "summarize", "summary", "overview", "purpose", "why read",
+                "who should read", "why is this", "why was this", "takeaways", "what will i learn", "what can i learn",
+                "what is in this", "what does it talk about", "what do we have", "what is covered", "introduction"
+            ])) or
+            ("project" in q_lower and any(w in q_lower for w in ["what", "how", "tell", "explain", "about", "is", "was", "purpose", "goal", "background", "scope"])) or
+            ("document" in q_lower and any(w in q_lower for w in ["what", "how", "tell", "explain", "about", "is", "was", "purpose", "goal", "background", "scope"]))
         )
-        is_summary_query = bool(re.search(summary_intent_pattern, cleaned_question, re.IGNORECASE))
 
         # Retrieve top chunks
         t_ret_start = time.time()
-        if is_summary_query:
-            retrieved_items = [(chunk, 0.85) for chunk in session.chunks[:min(self.top_k, len(session.chunks))]]
+        if is_about_doc:
+            # Hybrid Retrieval for document overview:
+            # 1. Vector search for any specific keyword focus in query
+            specific_items = self.retrieve(cleaned_question, top_k=2, session_id=session_id)
+            # 2. Introductory opening overview chunks (Page 1 / Page 2)
+            intro_chunks = session.chunks[:min(3, len(session.chunks))]
+            
+            seen_ids = set()
+            merged_items: List[Tuple[DocumentChunk, float]] = []
+            
+            for ch in intro_chunks:
+                seen_ids.add(ch.chunk_id)
+                merged_items.append((ch, 0.85))
+                
+            for ch, sim in specific_items:
+                if ch.chunk_id not in seen_ids:
+                    seen_ids.add(ch.chunk_id)
+                    merged_items.append((ch, max(sim, 0.80)))
+                    
+            retrieved_items = merged_items[:self.top_k]
         else:
             retrieved_items = self.retrieve(cleaned_question, top_k=self.top_k, session_id=session_id)
         ret_elapsed_ms = (time.time() - t_ret_start) * 1000.0
