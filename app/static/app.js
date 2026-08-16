@@ -1186,10 +1186,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const auditBadge = document.createElement('div');
     if (data.grounded) {
       auditBadge.className = 'grounding-audit-badge audit-grounded';
-      auditBadge.innerHTML = `✓ Verified from Document &bull; ${(data.top_similarity * 100).toFixed(0)}% Match &bull; ⚡ Instant Response`;
+      const pageNum = data.citations && data.citations[0] ? (data.citations[0].unit_label || `Page ${data.citations[0].page}`) : 'Document';
+      auditBadge.innerHTML = `✓ Found in Document &bull; ${escapeHtml(pageNum)}`;
     } else {
       auditBadge.className = 'grounding-audit-badge audit-refusal';
-      auditBadge.innerHTML = `⚠️ Not Found in Document &bull; Safely Refused to Prevent Making Things Up`;
+      auditBadge.innerHTML = `⚠️ Not mentioned in this document`;
     }
     bubble.appendChild(auditBadge);
 
@@ -1207,8 +1208,8 @@ document.addEventListener('DOMContentLoaded', () => {
       const deckHeader = document.createElement('div');
       deckHeader.className = 'evidence-header';
       deckHeader.innerHTML = `
-        <span>Evidence from your Document (${data.citations.length} sections found):</span>
-        <span style="font-size:0.65rem;font-weight:500;color:var(--text-muted);text-transform:none;">Click any box below to jump to that page</span>
+        <span>Source Pages:</span>
+        <span style="font-size:0.68rem;font-weight:500;color:var(--text-muted);text-transform:none;">Click any box to view page</span>
       `;
       deck.appendChild(deckHeader);
 
@@ -1219,16 +1220,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const card = document.createElement('div');
         card.className = 'evidence-card';
         const label = c.unit_label || `Page ${c.page}`;
-        card.title = `Click to view ${label} in the reader`;
+        card.title = `Click to view ${label}`;
         card.innerHTML = `
           <div class="evidence-top">
             <span>${escapeHtml(label)}</span>
-            <span>${(c.similarity_score * 100).toFixed(0)}% match</span>
           </div>
           <div class="evidence-quote">"${escapeHtml(c.excerpt)}"</div>
-          <span class="jump-btn-tag">↗ Go to ${escapeHtml(label)} in Reader</span>
+          <span class="jump-btn-tag">↗ Open ${escapeHtml(label)}</span>
         `;
         card.addEventListener('click', () => {
+          activateView('view-doc');
           scrollToPage(c.page, c.excerpt);
         });
         cardsContainer.appendChild(card);

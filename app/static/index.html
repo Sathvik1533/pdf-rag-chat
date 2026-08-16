@@ -19,62 +19,62 @@
 
   <div class="veritas-app">
     <!-- Top Navigation Bar -->
-    <header class="veritas-nav" title="Veritas Document Intelligence Navigation">
+    <header class="veritas-nav" title="Veritas Document Chat">
       <div class="nav-left">
-        <div class="nav-brand" title="Veritas: Evidence-Grounded Document Assistant powered by FAISS & Llama 3.3">
-          <span class="brand-mark" title="Veritas Brand Mark">V</span>
+        <div class="nav-brand">
+          <span class="brand-mark">V</span>
           <div class="brand-titles">
             <span class="brand-name">VERITAS</span>
-            <span class="brand-tag">Grounded Document Assistant</span>
+            <span class="brand-tag">Smart Document Assistant</span>
           </div>
         </div>
 
         <div class="telemetry-pills">
-          <div class="pill" title="Source-Grounded: Every answer is synthesized directly from verified PDF excerpts">
+          <div class="pill">
             <span class="pill-dot pill-dot-emerald"></span>
-            <span>Source-Grounded</span>
+            <span>Fact-Checked</span>
           </div>
-          <div class="pill" title="Page Citations: Every answer references the exact page number in your PDF">
+          <div class="pill">
             <span class="pill-dot pill-dot-blue"></span>
-            <span>Page Citations</span>
+            <span>Exact Page Numbers</span>
           </div>
-          <div class="pill" title="Refusal Floor: Questions with semantic similarity below 0.35 are refused in code to prevent making things up">
+          <div class="pill">
             <span class="pill-dot pill-dot-amber"></span>
-            <span>Refusal Floor: <strong id="telemetry-threshold">0.35</strong></span>
+            <span>Zero Guesses</span>
           </div>
         </div>
       </div>
 
       <div class="nav-right">
-        <button id="btn-doc-history" class="btn btn-ghost btn-sm" title="Document Library & History: View and switch between previously uploaded documents in this session">
+        <button id="btn-doc-history" class="btn btn-ghost btn-sm" title="View previously opened documents">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="10"></circle>
             <polyline points="12 6 12 12 16 14"></polyline>
           </svg>
-          <span>History</span>
+          <span>Saved Files</span>
           <span id="history-badge-count" class="badge-count hidden">0</span>
         </button>
 
-        <button id="load-sample-btn" class="btn btn-secondary btn-sm" title="Try Sample Document: Load a pre-packaged 3-page aerospace engineering specification to test Veritas immediately">
+        <button id="load-sample-btn" class="btn btn-secondary btn-sm" title="Try a demo document">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
             <polyline points="14 2 14 8 20 8"></polyline>
             <line x1="12" y1="18" x2="12" y2="12"></line>
             <line x1="9" y1="15" x2="15" y2="15"></line>
           </svg>
-          <span>Try Sample Document</span>
+          <span>Try Sample</span>
         </button>
 
-        <button id="export-audit-btn" class="btn btn-ghost btn-sm" title="Export Studio: Download formal Markdown report, PDF executive brief, or JSON audit record">
+        <button id="export-audit-btn" class="btn btn-ghost btn-sm" title="Save notes or download report">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
             <polyline points="7 10 12 15 17 10"></polyline>
             <line x1="12" y1="15" x2="12" y2="3"></line>
           </svg>
-          <span>Export Studio</span>
+          <span>Save Notes</span>
         </button>
 
-        <button id="theme-toggle-btn" class="btn btn-ghost btn-icon" title="Switch Theme (Light Ivory / Dark Obsidian mode)" aria-label="Toggle Theme">
+        <button id="theme-toggle-btn" class="btn btn-ghost btn-icon" title="Light / Dark mode" aria-label="Toggle Theme">
           <svg id="theme-icon-sun" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="5"></circle>
             <line x1="12" y1="1" x2="12" y2="3"></line>
@@ -88,7 +88,7 @@
           </svg>
         </button>
 
-        <button id="toggle-config-btn" class="btn btn-ghost btn-icon" title="Engine Settings: Configure fact-checking strictness and API credentials" aria-label="Settings">
+        <button id="toggle-config-btn" class="btn btn-ghost btn-icon" title="Settings" aria-label="Settings">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="3"></circle>
             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
@@ -256,17 +256,17 @@
         </div>
 
         <!-- Navigation Views -->
-        <nav class="sidebar-nav-menu" title="Studio Workspace Views">
-          <div class="sidebar-section-title">INTELLIGENCE VIEWS</div>
+        <nav class="sidebar-nav-menu" title="Workspace Views">
+          <div class="sidebar-section-title">VIEWS</div>
           
-          <button id="nav-view-chat" class="sidebar-nav-item active" data-view="view-chat" title="Grounded Chat & Real-Time Q&A">
+          <button id="nav-view-chat" class="sidebar-nav-item active" data-view="view-chat" title="Chat & Ask Questions">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
             </svg>
-            <span>Grounded Chat</span>
+            <span>💬 Chat</span>
           </button>
 
-          <button id="nav-view-doc" class="sidebar-nav-item" data-view="view-doc" title="Document Reader: Full page inspector with citations">
+          <button id="nav-view-doc" class="sidebar-nav-item" data-view="view-doc" title="Read Document Pages">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
               <polyline points="14 2 14 8 20 8"></polyline>
@@ -274,17 +274,17 @@
               <line x1="16" y1="17" x2="8" y2="17"></line>
               <polyline points="10 9 9 9 8 9"></polyline>
             </svg>
-            <span>Document Reader</span>
+            <span>📄 Read Document</span>
           </button>
 
-          <button id="nav-view-presets" class="sidebar-nav-item" data-view="view-presets" title="Executive Intelligence Presets">
+          <button id="nav-view-presets" class="sidebar-nav-item" data-view="view-presets" title="Quick Summaries & Key Points">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
             </svg>
-            <span>Executive Presets</span>
+            <span>⚡ Quick Summaries</span>
           </button>
 
-          <button id="nav-view-graph" class="sidebar-nav-item" data-view="view-graph" title="Interactive Physics Knowledge Graph">
+          <button id="nav-view-graph" class="sidebar-nav-item" data-view="view-graph" title="Visual Topic Map">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="18" cy="5" r="3"></circle>
               <circle cx="6" cy="12" r="3"></circle>
@@ -292,35 +292,35 @@
               <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
               <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
             </svg>
-            <span>Knowledge Graph</span>
+            <span>🕸️ Topic Map</span>
           </button>
 
-          <button id="nav-view-chunks" class="sidebar-nav-item" data-view="view-chunks" title="Vector Map & Indexed Chunk Telemetry">
+          <button id="nav-view-chunks" class="sidebar-nav-item" data-view="view-chunks" title="All Document Sections">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
               <polyline points="2 17 12 22 22 17"></polyline>
               <polyline points="2 12 12 17 22 12"></polyline>
             </svg>
-            <span>Vector Sections Map</span>
+            <span>📑 Document Parts</span>
           </button>
 
-          <button id="nav-view-radar" class="sidebar-nav-item" data-view="view-radar" title="Grounding Radar & Similarity Verification">
+          <button id="nav-view-radar" class="sidebar-nav-item" data-view="view-radar" title="Fact Checking Status">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <line x1="18" y1="20" x2="18" y2="10"></line>
               <line x1="12" y1="20" x2="12" y2="4"></line>
               <line x1="6" y1="20" x2="6" y2="14"></line>
             </svg>
-            <span>Grounding Radar</span>
+            <span>🎯 Fact Checker</span>
           </button>
 
-          <div class="sidebar-section-title" style="margin-top: 1rem;">DATA & LIBRARY</div>
+          <div class="sidebar-section-title" style="margin-top: 1rem;">SAVED</div>
 
-          <button id="btn-sidebar-history" class="sidebar-nav-item" title="Document Library & History">
+          <button id="btn-sidebar-history" class="sidebar-nav-item" title="Previous Files">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="12" r="10"></circle>
               <polyline points="12 6 12 12 16 14"></polyline>
             </svg>
-            <span>Document Library</span>
+            <span>🕒 Previous Files</span>
             <span id="sidebar-history-count" class="badge-count hidden">0</span>
           </button>
         </nav>
@@ -329,9 +329,8 @@
         <div class="sidebar-footer">
           <div class="footer-status-pill">
             <span class="pill-dot pill-dot-emerald"></span>
-            <span>FAISS L2 Norm &bull; &lt;15MB</span>
+            <span>Fast &amp; Private</span>
           </div>
-          <div class="footer-engine-label">Groq LLaMA 3.3 70B</div>
         </div>
 
       </aside>
@@ -340,14 +339,14 @@
       <section class="studio-main-viewport">
         
         <!-- View 1: Grounded Chat & Real-Time Q&A (Default View) -->
-        <div id="view-chat" class="studio-view active" title="Grounded Chat View">
+        <div id="view-chat" class="studio-view active" title="Chat View">
           <div class="chat-viewport">
             
             <!-- Conversation Stream -->
-            <div id="chat-thread" class="chat-thread" title="Conversation thread">
+            <div id="chat-thread" class="chat-thread" title="Chat history">
               
               <!-- Empty State / Welcome -->
-              <div id="empty-state" class="empty-state" title="Welcome banner">
+              <div id="empty-state" class="empty-state">
                 <div class="empty-dossier-icon">
                   <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
@@ -357,28 +356,28 @@
                     <polyline points="10 9 9 9 8 9"></polyline>
                   </svg>
                 </div>
-                <h2 class="empty-title">Ask Questions About Your Document</h2>
+                <h2 class="empty-title">Ask Anything About Your Document</h2>
                 <p class="empty-subtitle">
-                  Upload a PDF in the sidebar or click <strong>"Try Sample Document"</strong> above. Ask any question to receive synthesized answers with exact page-level citations.
+                  Drop any file on the left or click <strong>"Try Sample"</strong> above. Ask any question and get instant, honest answers straight from your file.
                 </p>
               </div>
 
             </div>
 
             <!-- Floating Starter Chips (Shown when doc is loaded) -->
-            <div id="starter-chips" class="starter-chips hidden" title="Suggested questions">
-              <span class="starter-label">Suggested Questions:</span>
-              <button class="chip" data-query="What is this document about?">Document Summary</button>
-              <button class="chip" data-query="What are the key budgets, costs, or financial allocations?">Budgets & Costs</button>
-              <button class="chip" data-query="What are the deadlines, milestones, or important dates?">Milestones & Deadlines</button>
-              <button class="chip" data-query="How do warp drive antimatter engines navigate through gravitational wormholes?">Test Refusal (Out-of-Scope) ⚡</button>
+            <div id="starter-chips" class="starter-chips hidden">
+              <span class="starter-label">Try Asking:</span>
+              <button class="chip" data-query="What is this document about?">Main Summary</button>
+              <button class="chip" data-query="What are the key budgets, costs, or financial allocations?">Costs &amp; Budgets</button>
+              <button class="chip" data-query="What are the deadlines, milestones, or important dates?">Important Dates</button>
+              <button class="chip" data-query="How do warp drive antimatter engines navigate through gravitational wormholes?">Test Unknown Question ⚡</button>
             </div>
 
             <!-- Bottom Prompt Composer -->
             <div class="composer-container">
               <form id="composer-form" class="composer-form">
                 <div class="composer-box">
-                  <button type="button" id="btn-voice-dictate" class="btn-dictate" title="Voice Input: Click to speak your question">
+                  <button type="button" id="btn-voice-dictate" class="btn-dictate" title="Click to speak your question">
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
                       <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
@@ -398,7 +397,7 @@
                 </div>
               </form>
               <div class="composer-meta">
-                <span>Verified directly from document text.</span>
+                <span>Answers are verified directly from your document.</span>
               </div>
             </div>
 
@@ -411,26 +410,26 @@
             <div class="reader-toolbar">
               <div class="reader-search-box">
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                <input type="text" id="reader-search-input" placeholder="Find in document text..." class="reader-search-input">
+                <input type="text" id="reader-search-input" placeholder="Search document text..." class="reader-search-input">
                 <span id="reader-search-count" class="reader-search-count"></span>
               </div>
               <div id="reader-page-pills" class="page-pills">
-                <span class="no-doc-hint">Upload any file to view content</span>
+                <span class="no-doc-hint">Drop any file to start reading</span>
               </div>
             </div>
             <div id="reader-pages-container" class="reader-pages-container">
               <div class="reader-empty">
-                <p>Upload any PDF, Word doc, spreadsheet, slide deck, JSON, code, or text file to inspect formatted sections here and see matching evidence highlighted when you chat.</p>
+                <p>Drop any PDF, Word doc, spreadsheet, slide deck, or text file to read pages here.</p>
               </div>
             </div>
           </div>
         </div>
 
         <!-- View 3: Executive Intelligence Presets -->
-        <div id="view-presets" class="studio-view" title="Executive Presets View">
+        <div id="view-presets" class="studio-view" title="Quick Summaries View">
           <div class="studio-view-card">
             <div class="presets-header">
-              <span class="section-label">1-Click Executive Strategic Syntheses</span>
+              <span class="section-label">Quick Summary Cards</span>
             </div>
             <div class="presets-grid">
               <button type="button" class="preset-card" id="btn-veritas-brief">
@@ -441,8 +440,8 @@
                   </svg>
                 </div>
                 <div class="preset-content">
-                  <strong>Executive Strategic Brief</strong>
-                  <p>Synthesize high-level objectives, scope, core findings, and executive decisions.</p>
+                  <strong>Main Summary</strong>
+                  <p>Get a clear overview of the main goals, decisions, and takeaways.</p>
                 </div>
               </button>
 
@@ -454,8 +453,8 @@
                   </svg>
                 </div>
                 <div class="preset-content">
-                  <strong>Financial &amp; Budget Matrix</strong>
-                  <p>Extract all monetary allocations, cost structures, and quantified metrics into a structured table.</p>
+                  <strong>Numbers &amp; Costs</strong>
+                  <p>Pull out all prices, budgets, and measurements into a neat table.</p>
                 </div>
               </button>
 
@@ -468,8 +467,8 @@
                   </svg>
                 </div>
                 <div class="preset-content">
-                  <strong>Risk &amp; Vulnerability Audit</strong>
-                  <p>Audit technical dependencies, compliance liabilities, operational constraints, and critical warnings.</p>
+                  <strong>Risks &amp; Warnings</strong>
+                  <p>Find all problems, risks, technical limitations, and warnings.</p>
                 </div>
               </button>
 
@@ -483,8 +482,8 @@
                   </svg>
                 </div>
                 <div class="preset-content">
-                  <strong>Timeline &amp; Milestone Roadmap</strong>
-                  <p>Consolidate dates, phase deliverables, operational gates, and release schedules.</p>
+                  <strong>Dates &amp; Deadlines</strong>
+                  <p>List all dates, project phases, and scheduled deadlines in order.</p>
                 </div>
               </button>
             </div>
@@ -492,75 +491,75 @@
         </div>
 
         <!-- View 4: Interactive Physics Knowledge Graph -->
-        <div id="view-graph" class="studio-view" title="Knowledge Graph View">
+        <div id="view-graph" class="studio-view" title="Topic Map View">
           <div class="studio-view-card">
             <div class="graph-header">
-              <span class="section-label">Interactive Document Entity Knowledge Graph</span>
-              <span class="badge-mono" id="graph-nodes-count">Physics Graph</span>
+              <span class="section-label">Visual Topic Map</span>
+              <span class="badge-mono" id="graph-nodes-count">Interactive Map</span>
             </div>
             <div class="graph-canvas-container" style="height: 580px;">
               <canvas id="knowledge-graph-canvas"></canvas>
-              <div class="graph-overlay-hint">Drag nodes &bull; Click any section bubble to jump to document</div>
+              <div class="graph-overlay-hint">Drag circles &bull; Click any bubble to jump to that page</div>
             </div>
           </div>
         </div>
 
         <!-- View 5: Vector Map & Indexed Chunks -->
-        <div id="view-chunks" class="studio-view" title="Vector Map View">
+        <div id="view-chunks" class="studio-view" title="Document Parts View">
           <div class="studio-view-card">
             <div class="vector-header">
-              <span class="section-label">FAISS In-Memory Vector Chunks</span>
-              <span class="badge-mono" id="vector-indexed-count">0 Chunks Indexed</span>
+              <span class="section-label">All Document Sections</span>
+              <span class="badge-mono" id="vector-indexed-count">0 Sections Loaded</span>
             </div>
             <div id="vector-chunks-list" class="vector-chunks-list" style="max-height: 560px;">
-              <div class="vector-empty-msg">No vectors indexed yet. Upload a document to inspect embeddings.</div>
+              <div class="vector-empty-msg">No document loaded yet. Drop a file to see its sections.</div>
             </div>
           </div>
         </div>
 
         <!-- View 6: Grounding Radar & Diagnostics -->
-        <div id="view-radar" class="studio-view" title="Grounding Radar View">
+        <div id="view-radar" class="studio-view" title="Fact Checker View">
           <div class="studio-view-card">
             <div class="spectrum-header">
-              <span class="section-label">Grounding Verification Status & Telemetry</span>
+              <span class="section-label">Fact Checking Status</span>
             </div>
             
-            <div class="spectrum-visual" title="Visual comparison of refusal cutoff (0.35) vs grounded zone">
+            <div class="spectrum-visual">
               <div class="spectrum-bar">
                 <div class="spectrum-zone zone-refusal" style="width: 35%;">
-                  <span class="zone-tag">Refusal Zone</span>
+                  <span class="zone-tag">Not in Document (Will Refuse)</span>
                 </div>
                 <div class="spectrum-zone zone-grounded" style="width: 65%;">
-                  <span class="zone-tag">Grounded Zone</span>
+                  <span class="zone-tag">Found in Document (Verified)</span>
                 </div>
               </div>
               <div class="threshold-marker" style="left: 35%;">
                 <span class="marker-line"></span>
-                <span class="marker-text">Threshold (0.35)</span>
+                <span class="marker-text">Trust Cutoff (0.35)</span>
               </div>
             </div>
 
             <div id="latest-query-radar" class="latest-radar-box">
               <div class="radar-row">
-                <span class="radar-lbl">Latest Query:</span>
-                <span id="radar-status" class="badge-subtle">Waiting for input</span>
+                <span class="radar-lbl">Last Question:</span>
+                <span id="radar-status" class="badge-subtle">Waiting for question</span>
               </div>
               <div class="radar-row">
-                <span class="radar-lbl">Max Similarity:</span>
+                <span class="radar-lbl">Document Match:</span>
                 <span id="radar-score" class="font-mono">--</span>
               </div>
               <div class="radar-row">
-                <span class="radar-lbl">Retrieval Latency:</span>
+                <span class="radar-lbl">Search Speed:</span>
                 <span id="radar-ret-latency" class="font-mono">--</span>
               </div>
               <div class="radar-row">
-                <span class="radar-lbl">Generation Latency:</span>
+                <span class="radar-lbl">Answer Speed:</span>
                 <span id="radar-gen-latency" class="font-mono">--</span>
               </div>
             </div>
 
             <p class="spectrum-note">
-              <strong>Grounding Protocol:</strong> If a question lacks sufficient semantic similarity to the document (&lt; 0.35), LLM generation is bypassed in code to return a deterministic refusal.
+              <strong>How it works:</strong> If your question is not in the document, the app honestly says it doesn't know instead of guessing.
             </p>
           </div>
         </div>
