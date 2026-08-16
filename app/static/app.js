@@ -459,6 +459,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const formData = new FormData();
     formData.append('file', file);
 
+    // Stop active audio and clear any highlights immediately
+    TTSController.stop();
+    document.querySelectorAll('.passage-highlight').forEach(el => el.classList.remove('passage-highlight'));
+
+    // Clear previous chat view immediately so new upload starts in a clean workspace
+    if (!isSilentRehydration) {
+      chatThread.innerHTML = '';
+      conversationHistory = [];
+      if (emptyState) emptyState.classList.remove('hidden');
+    }
+
     // Persist file bytes to client-side IndexedDB for seamless 1-click switching & auto-rehydration
     if (file && file.name) {
       DocStore.saveFile(file.name, file);
@@ -508,10 +519,6 @@ document.addEventListener('DOMContentLoaded', () => {
       metaPages.textContent = `${data.total_pages} sections`;
       metaChunks.textContent = `${data.total_chunks} chunks`;
 
-      // Clear TTS playback & any previous highlights
-      TTSController.stop();
-      document.querySelectorAll('.passage-highlight').forEach(el => el.classList.remove('passage-highlight'));
-
       // Save to Document History Library
       saveDocHistory({
         filename: data.filename,
@@ -540,10 +547,6 @@ document.addEventListener('DOMContentLoaded', () => {
       restoreChatThread(data.filename);
 
       updateSmartStarterChips(data.filename);
-
-      if (!isSilentRehydration) {
-        appendNotice(`**"${data.filename}" is ready.** ${data.total_pages} sections loaded. You can now ask questions below.`);
-      }
 
     } catch (err) {
       console.error(err);
@@ -1286,8 +1289,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
         updateSmartStarterChips(data.filename);
         updateHistoryBadge();
-
-        appendNotice(`**Switched active document to "${data.filename}"** (${data.total_pages} sections ready).`);
         return true;
       }
 
@@ -1312,7 +1313,6 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         dropzone.classList.remove('hidden');
       }
-      appendNotice(`Could not restore "${filename}". Please select the file to reload.`);
       fileInput.click();
       return false;
 
@@ -1320,7 +1320,6 @@ document.addEventListener('DOMContentLoaded', () => {
       console.error('Switch error:', err);
       ingestLoader.classList.add('hidden');
       if (currentDossier) docMetaStrip.classList.remove('hidden');
-      appendNotice(`**Switch Notice:** ${err.message}`);
       return false;
     }
   }
@@ -1426,6 +1425,35 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
   updateHistoryBadge();
+
+  // --------------------------------------------------------------------------
+  // Clear Current Chat Thread / New Conversation
+  // --------------------------------------------------------------------------
+  function clearCurrentChatThread() {
+    TTSController.stop();
+    document.querySelectorAll('.passage-highlight').forEach(el => el.classList.remove('passage-highlight'));
+
+    const key = getChatStorageKey();
+    localStorage.removeItem(key);
+    conversationHistory = [];
+    chatThread.innerHTML = '';
+    if (emptyState) emptyState.classList.remove('hidden');
+
+    if (composerInput) {
+      composerInput.value = '';
+      composerInput.focus();
+    }
+  }
+
+  const btnClearChat = document.getElementById('btn-clear-chat');
+  if (btnClearChat) {
+    btnClearChat.addEventListener('click', clearCurrentChatThread);
+  }
+
+  const topBtnNewChat = document.getElementById('top-btn-new-chat');
+  if (topBtnNewChat) {
+    topBtnNewChat.addEventListener('click', clearCurrentChatThread);
+  }
 
   // --------------------------------------------------------------------------
   // Export Studio Modal Handlers

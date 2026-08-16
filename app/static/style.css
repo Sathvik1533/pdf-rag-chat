@@ -730,6 +730,13 @@ body {
   color: var(--brand);
 }
 
+.active-doc-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.btn-clear-chat,
 .btn-change-file {
   display: inline-flex;
   align-items: center;
@@ -746,6 +753,7 @@ body {
   white-space: nowrap;
 }
 
+.btn-clear-chat:hover,
 .btn-change-file:hover {
   background: var(--bg-body);
   border-color: var(--brand);
