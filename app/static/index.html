@@ -198,358 +198,376 @@
       </div>
     </div>
 
-    <!-- Main Workspace Layout -->
-    <main class="veritas-workbench">
+    <!-- Main Multi-Page Sidebar Workspace Layout -->
+    <div class="veritas-studio-layout">
       
-      <!-- Left Column: Document Lens & Evidence Desk -->
-      <aside class="workbench-sidebar">
+      <!-- Left Studio Navigation Sidebar -->
+      <aside class="studio-sidebar" title="Veritas Workspace Navigation">
         
-        <!-- Document Ingestion & Summary Header -->
-        <div class="dossier-card">
-          <div class="dossier-header">
-            <div class="dossier-tabs" title="Switch between Document Reader, Presets, Sections, Graph, and Grounding Meter">
-              <button id="tab-doc-view" class="tab-btn active" data-tab="doc-viewer" title="Read Document: View formatted pages with clickable citation highlights">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                  <polyline points="14 2 14 8 20 8"></polyline>
-                </svg>
-                <span>Document</span>
-              </button>
-              <button id="tab-presets-view" class="tab-btn" data-tab="executive-presets" title="Executive Presets: 1-click strategic summaries, financials, and risk extractions">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
-                </svg>
-                <span>Presets</span>
-              </button>
-              <button id="tab-vector-view" class="tab-btn" data-tab="vector-map" title="Document Sections: Inspect individual indexed text chunks and token lengths">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
-                  <polyline points="2 17 12 22 22 17"></polyline>
-                  <polyline points="2 12 12 17 22 12"></polyline>
-                </svg>
-                <span>Sections</span>
-              </button>
-              <button id="tab-graph-view" class="tab-btn" data-tab="knowledge-graph" title="Knowledge Graph: Interactive neural node map of document topics and sections">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <circle cx="18" cy="5" r="3"></circle>
-                  <circle cx="6" cy="12" r="3"></circle>
-                  <circle cx="18" cy="19" r="3"></circle>
-                  <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
-                  <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
-                </svg>
-                <span>Graph</span>
-              </button>
-              <button id="tab-diag-view" class="tab-btn" data-tab="diagnostics" title="Grounding Meter: Real-time radar showing retrieval confidence score vs refusal threshold">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <line x1="18" y1="20" x2="18" y2="10"></line>
-                  <line x1="12" y1="20" x2="12" y2="4"></line>
-                  <line x1="6" y1="20" x2="6" y2="14"></line>
-                </svg>
-                <span>Ground</span>
-              </button>
-            </div>
-          </div>
-
-          <!-- Document Upload Dropzone -->
-          <div id="dropzone" class="dropzone" title="Upload Document: Drag and drop PDF, Word, Excel, PowerPoint, CSV, JSON, Code, or Text files">
+        <!-- Active Document Card / Mini Ingestion -->
+        <div class="sidebar-doc-card">
+          <!-- Dropzone when no doc loaded -->
+          <div id="dropzone" class="sidebar-dropzone" title="Upload Document: Drag and drop PDF, Word, Excel, PowerPoint, CSV, JSON, Code, or Text files">
             <input type="file" id="pdf-file-input" accept=".pdf,.docx,.doc,.pptx,.ppt,.xlsx,.xls,.csv,.tsv,.json,.jsonl,.yaml,.yml,.xml,.html,.htm,.py,.js,.ts,.tsx,.jsx,.java,.cpp,.c,.go,.rs,.sql,.sh,.css,.txt,.md,.markdown,.rst,.log" class="hidden-input" title="File input">
-            <div class="dropzone-body">
-              <div class="dropzone-glyph" title="Universal Document Icon">
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                  <polyline points="14 2 14 8 20 8"></polyline>
-                  <line x1="12" y1="18" x2="12" y2="12"></line>
-                  <line x1="9" y1="15" x2="15" y2="15"></line>
-                </svg>
-              </div>
-              <p class="dropzone-text"><strong>Drop any file or document here to start</strong></p>
-              <p class="dropzone-sub">PDF, Word, Slides, Excel, CSV, JSON, Code, & Text &bull; <button type="button" id="browse-btn" class="link-btn" title="Click to browse your computer">choose file</button></p>
+            <div class="sidebar-dropzone-body">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="12" y1="18" x2="12" y2="12"></line>
+                <line x1="9" y1="15" x2="15" y2="15"></line>
+              </svg>
+              <span class="dropzone-label">Drop PDF or <button type="button" id="browse-btn" class="link-btn">browse</button></span>
             </div>
           </div>
 
-          <!-- Ingestion Progress Loader -->
+          <!-- Ingestion Loader -->
           <div id="ingest-loader" class="ingest-loader hidden" title="Processing document">
             <div class="loader-bar"><div class="loader-bar-progress"></div></div>
-            <p id="ingest-loader-text" class="loader-caption">Parsing and indexing document content...</p>
+            <p id="ingest-loader-text" class="loader-caption">Vectorizing document...</p>
           </div>
 
-          <!-- Active Document Header Card (Shown after upload, replacing dropzone) -->
+          <!-- Active Document Header (Shown after upload) -->
           <div id="doc-meta-strip" class="doc-meta-strip hidden" title="Active Document Summary">
             <div class="active-doc-left">
               <div class="active-doc-icon">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
                   <polyline points="14 2 14 8 20 8"></polyline>
-                  <line x1="16" y1="13" x2="8" y2="13"></line>
-                  <line x1="16" y1="17" x2="8" y2="17"></line>
-                  <polyline points="10 9 9 9 8 9"></polyline>
                 </svg>
               </div>
               <div class="active-doc-details">
-                <div class="active-doc-headline">
-                  <span id="meta-filename" class="meta-filename" title="Indexed document filename">document.pdf</span>
-                  <span class="badge-status-ready">Active</span>
-                </div>
+                <span id="meta-filename" class="meta-filename" title="Indexed document filename">document.pdf</span>
                 <div class="active-doc-subline">
                   <span id="meta-pages">0 sections</span> &bull; 
-                  <span id="meta-chunks">0 chunks</span> &bull; 
-                  <span id="meta-readtime">~1 min read</span>
+                  <span id="meta-chunks">0 chunks</span>
                 </div>
               </div>
             </div>
             <div class="active-doc-actions">
-              <button type="button" id="btn-quick-history" class="btn-quick-history" title="View previously uploaded documents & switch library">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <circle cx="12" cy="12" r="10"></circle>
-                  <polyline points="12 6 12 12 16 14"></polyline>
-                </svg>
-                <span>History</span>
-              </button>
               <button type="button" id="btn-change-file" class="btn-change-file" title="Upload a different document">
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                   <polyline points="17 8 12 3 7 8"></polyline>
                   <line x1="12" y1="3" x2="12" y2="15"></line>
                 </svg>
-                <span>Replace File</span>
               </button>
             </div>
           </div>
         </div>
 
-        <!-- Tab 1: Interactive Document Reader -->
-        <div id="panel-doc-viewer" class="tab-panel active" title="Document Reader View">
-          <div class="doc-reader-card">
-            <div class="reader-toolbar" title="Search and navigate directly between sections">
+        <!-- Navigation Views -->
+        <nav class="sidebar-nav-menu" title="Studio Workspace Views">
+          <div class="sidebar-section-title">INTELLIGENCE VIEWS</div>
+          
+          <button id="nav-view-chat" class="sidebar-nav-item active" data-view="view-chat" title="Grounded Chat & Real-Time Q&A">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            </svg>
+            <span>Grounded Chat</span>
+          </button>
+
+          <button id="nav-view-doc" class="sidebar-nav-item" data-view="view-doc" title="Document Reader: Full page inspector with citations">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+              <line x1="16" y1="13" x2="8" y2="13"></line>
+              <line x1="16" y1="17" x2="8" y2="17"></line>
+              <polyline points="10 9 9 9 8 9"></polyline>
+            </svg>
+            <span>Document Reader</span>
+          </button>
+
+          <button id="nav-view-presets" class="sidebar-nav-item" data-view="view-presets" title="Executive Intelligence Presets">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+            </svg>
+            <span>Executive Presets</span>
+          </button>
+
+          <button id="nav-view-graph" class="sidebar-nav-item" data-view="view-graph" title="Interactive Physics Knowledge Graph">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="18" cy="5" r="3"></circle>
+              <circle cx="6" cy="12" r="3"></circle>
+              <circle cx="18" cy="19" r="3"></circle>
+              <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"></line>
+              <line x1="15.41" y1="6.51" x2="8.59" y2="10.49"></line>
+            </svg>
+            <span>Knowledge Graph</span>
+          </button>
+
+          <button id="nav-view-chunks" class="sidebar-nav-item" data-view="view-chunks" title="Vector Map & Indexed Chunk Telemetry">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+              <polyline points="2 17 12 22 22 17"></polyline>
+              <polyline points="2 12 12 17 22 12"></polyline>
+            </svg>
+            <span>Vector Sections Map</span>
+          </button>
+
+          <button id="nav-view-radar" class="sidebar-nav-item" data-view="view-radar" title="Grounding Radar & Similarity Verification">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="20" x2="18" y2="10"></line>
+              <line x1="12" y1="20" x2="12" y2="4"></line>
+              <line x1="6" y1="20" x2="6" y2="14"></line>
+            </svg>
+            <span>Grounding Radar</span>
+          </button>
+
+          <div class="sidebar-section-title" style="margin-top: 1rem;">DATA & LIBRARY</div>
+
+          <button id="btn-sidebar-history" class="sidebar-nav-item" title="Document Library & History">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+            <span>Document Library</span>
+            <span id="sidebar-history-count" class="badge-count hidden">0</span>
+          </button>
+        </nav>
+
+        <!-- Bottom Telemetry & Status -->
+        <div class="sidebar-footer">
+          <div class="footer-status-pill">
+            <span class="pill-dot pill-dot-emerald"></span>
+            <span>FAISS L2 Norm &bull; &lt;15MB</span>
+          </div>
+          <div class="footer-engine-label">Groq LLaMA 3.3 70B</div>
+        </div>
+
+      </aside>
+
+      <!-- Main Studio Content Viewport -->
+      <section class="studio-main-viewport">
+        
+        <!-- View 1: Grounded Chat & Real-Time Q&A (Default View) -->
+        <div id="view-chat" class="studio-view active" title="Grounded Chat View">
+          <div class="chat-viewport">
+            
+            <!-- Conversation Stream -->
+            <div id="chat-thread" class="chat-thread" title="Conversation thread">
+              
+              <!-- Empty State / Welcome -->
+              <div id="empty-state" class="empty-state" title="Welcome banner">
+                <div class="empty-dossier-icon">
+                  <svg width="42" height="42" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
+                    <line x1="16" y1="13" x2="8" y2="13"></line>
+                    <line x1="16" y1="17" x2="8" y2="17"></line>
+                    <polyline points="10 9 9 9 8 9"></polyline>
+                  </svg>
+                </div>
+                <h2 class="empty-title">Ask Questions About Your Document</h2>
+                <p class="empty-subtitle">
+                  Upload a PDF in the sidebar or click <strong>"Try Sample Document"</strong> above. Ask any question to receive synthesized answers with exact page-level citations.
+                </p>
+              </div>
+
+            </div>
+
+            <!-- Floating Starter Chips (Shown when doc is loaded) -->
+            <div id="starter-chips" class="starter-chips hidden" title="Suggested questions">
+              <span class="starter-label">Suggested Questions:</span>
+              <button class="chip" data-query="What is this document about?">Document Summary</button>
+              <button class="chip" data-query="What are the key budgets, costs, or financial allocations?">Budgets & Costs</button>
+              <button class="chip" data-query="What are the deadlines, milestones, or important dates?">Milestones & Deadlines</button>
+              <button class="chip" data-query="How do warp drive antimatter engines navigate through gravitational wormholes?">Test Refusal (Out-of-Scope) ⚡</button>
+            </div>
+
+            <!-- Bottom Prompt Composer -->
+            <div class="composer-container" title="Question input composer">
+              <form id="composer-form" class="composer-form">
+                <div class="composer-box">
+                  <button type="button" id="btn-voice-dictate" class="btn-dictate" title="Voice Input: Speak your question via speech recognition">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
+                      <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
+                      <line x1="12" y1="19" x2="12" y2="23"></line>
+                      <line x1="8" y1="23" x2="16" y2="23"></line>
+                    </svg>
+                  </button>
+
+                  <textarea id="composer-input" rows="1" placeholder="Ask any question about your document..." title="Type your question or click the mic to speak"></textarea>
+                  
+                  <button type="submit" id="composer-submit" class="btn-submit" title="Send question" aria-label="Send">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <line x1="22" y1="2" x2="11" y2="13"></line>
+                      <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                    </svg>
+                  </button>
+                </div>
+              </form>
+              <div class="composer-meta">
+                <span>Press <strong>Enter</strong> to send &bull; <strong>Shift+Enter</strong> for newline</span>
+                <span class="composer-guarantee">&bull; Grounded Synthesis &bull; Exact Page Citations</span>
+              </div>
+            </div>
+
+          </div>
+        </div>
+
+        <!-- View 2: Full Document Reader View -->
+        <div id="view-doc" class="studio-view" title="Document Reader View">
+          <div class="studio-view-card">
+            <div class="reader-toolbar">
               <div class="reader-search-box">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-                <input type="text" id="reader-search-input" placeholder="Find in document..." class="reader-search-input" title="Filter matching passages in real-time">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+                <input type="text" id="reader-search-input" placeholder="Find in document text..." class="reader-search-input">
                 <span id="reader-search-count" class="reader-search-count"></span>
               </div>
-              <div id="reader-page-pills" class="page-pills" title="Click a pill to scroll directly to that section">
+              <div id="reader-page-pills" class="page-pills">
                 <span class="no-doc-hint">Upload any file to view content</span>
               </div>
             </div>
-            <div id="reader-pages-container" class="reader-pages-container" title="Formatted document content — matching passages highlight here when citations are clicked">
+            <div id="reader-pages-container" class="reader-pages-container">
               <div class="reader-empty">
-                <p>Upload any PDF, Word doc, spreadsheet, slide deck, JSON, code, or text file to inspect sections here and see matching evidence highlighted when you chat.</p>
+                <p>Upload any PDF, Word doc, spreadsheet, slide deck, JSON, code, or text file to inspect formatted sections here and see matching evidence highlighted when you chat.</p>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Tab 2: Executive Intelligence Presets -->
-        <div id="panel-executive-presets" class="tab-panel" title="Executive Presets View">
-          <div class="presets-panel-card">
+        <!-- View 3: Executive Intelligence Presets -->
+        <div id="view-presets" class="studio-view" title="Executive Presets View">
+          <div class="studio-view-card">
             <div class="presets-header">
-              <span class="section-label">1-Click Executive Syntheses</span>
+              <span class="section-label">1-Click Executive Strategic Syntheses</span>
             </div>
             <div class="presets-grid">
-              <button type="button" class="preset-card" id="btn-veritas-brief" title="Generate an executive strategic briefing">
+              <button type="button" class="preset-card" id="btn-veritas-brief">
                 <div class="preset-icon icon-gold">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"></path>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    <polyline points="14 2 14 8 20 8"></polyline>
                   </svg>
                 </div>
-                <div class="preset-meta">
-                  <strong>Executive Summary Brief</strong>
-                  <p>Synthesize strategic mandate, core goals, and primary takeaways.</p>
+                <div class="preset-content">
+                  <strong>Executive Strategic Brief</strong>
+                  <p>Synthesize high-level objectives, scope, core findings, and executive decisions.</p>
                 </div>
               </button>
 
-              <button type="button" class="preset-card" id="btn-veritas-metrics" title="Extract key numerical metrics, financials, and KPIs into a table">
+              <button type="button" class="preset-card" id="btn-veritas-finance">
                 <div class="preset-icon icon-emerald">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <line x1="18" y1="20" x2="18" y2="10"></line>
-                    <line x1="12" y1="20" x2="12" y2="4"></line>
-                    <line x1="6" y1="20" x2="6" y2="14"></line>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <line x1="12" y1="1" x2="12" y2="23"></line>
+                    <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
                   </svg>
                 </div>
-                <div class="preset-meta">
-                  <strong>Key Metrics &amp; Financials</strong>
-                  <p>Extract numerical figures, budgets, and measurable milestones into a structured table.</p>
+                <div class="preset-content">
+                  <strong>Financial &amp; Budget Matrix</strong>
+                  <p>Extract all monetary allocations, cost structures, and quantified metrics into a structured table.</p>
                 </div>
               </button>
 
-              <button type="button" class="preset-card" id="btn-veritas-risks" title="Identify operational constraints, circuit breakers, and delivery schedules">
-                <div class="preset-icon icon-amber">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+              <button type="button" class="preset-card" id="btn-veritas-risks">
+                <div class="preset-icon icon-rose">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                    <line x1="12" y1="9" x2="12" y2="13"></line>
+                    <line x1="12" y1="17" x2="12.01" y2="17"></line>
                   </svg>
                 </div>
-                <div class="preset-meta">
-                  <strong>Risks &amp; Milestone Timelines</strong>
-                  <p>Identify operational constraints, failure risks, and delivery schedules.</p>
+                <div class="preset-content">
+                  <strong>Risk &amp; Vulnerability Audit</strong>
+                  <p>Audit technical dependencies, compliance liabilities, operational constraints, and critical warnings.</p>
                 </div>
               </button>
 
-              <button type="button" class="preset-card" id="btn-veritas-qa" title="Generate comprehensive study questions and answers">
-                <div class="preset-icon icon-purple">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="11" cy="11" r="8"></circle>
-                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              <button type="button" class="preset-card" id="btn-veritas-dates">
+                <div class="preset-icon icon-blue">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
                   </svg>
                 </div>
-                <div class="preset-meta">
-                  <strong>Q&amp;A Study Flashcards</strong>
-                  <p>Generate essential test questions and grounded answers based on document content.</p>
+                <div class="preset-content">
+                  <strong>Timeline &amp; Milestone Roadmap</strong>
+                  <p>Consolidate dates, phase deliverables, operational gates, and release schedules.</p>
                 </div>
               </button>
             </div>
           </div>
         </div>
 
-        <!-- Tab 3: Document Sections (Knowledge Map) -->
-        <div id="panel-vector-map" class="tab-panel" title="Document Sections View">
-          <div class="vector-map-card">
-            <div class="vector-map-header">
-              <span class="section-label">Document Breakdown</span>
-              <span id="vector-map-count" class="badge-mono" title="Total number of chunks in the vector index">0 Sections</span>
-            </div>
-            <div id="chunks-list" class="chunks-list" title="List of searchable sections with character counts and page numbers">
-              <p class="no-doc-hint">No document uploaded yet.</p>
-            </div>
-          </div>
-        </div>
-
-        <!-- Tab 4: Interactive Knowledge Graph -->
-        <div id="panel-knowledge-graph" class="tab-panel" title="Knowledge Graph View">
-          <div class="graph-panel-card">
+        <!-- View 4: Interactive Physics Knowledge Graph -->
+        <div id="view-graph" class="studio-view" title="Knowledge Graph View">
+          <div class="studio-view-card">
             <div class="graph-header">
-              <span class="section-label">Interactive Document Entity & Concept Graph</span>
+              <span class="section-label">Interactive Document Entity Knowledge Graph</span>
               <span class="badge-mono" id="graph-nodes-count">Physics Graph</span>
             </div>
-            <div class="graph-canvas-container">
+            <div class="graph-canvas-container" style="height: 580px;">
               <canvas id="knowledge-graph-canvas"></canvas>
               <div class="graph-overlay-hint">Drag nodes &bull; Click any section bubble to jump to document</div>
             </div>
           </div>
         </div>
 
-        <!-- Tab 3: Grounding Meter (Diagnostics) -->
-        <div id="panel-diagnostics" class="tab-panel" title="Grounding Meter View">
-          <div class="spectrum-card">
+        <!-- View 5: Vector Map & Indexed Chunks -->
+        <div id="view-chunks" class="studio-view" title="Vector Map View">
+          <div class="studio-view-card">
+            <div class="vector-header">
+              <span class="section-label">FAISS In-Memory Vector Chunks</span>
+              <span class="badge-mono" id="vector-indexed-count">0 Chunks Indexed</span>
+            </div>
+            <div id="vector-chunks-list" class="vector-chunks-list" style="max-height: 560px;">
+              <div class="vector-empty-msg">No vectors indexed yet. Upload a document to inspect embeddings.</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- View 6: Grounding Radar & Diagnostics -->
+        <div id="view-radar" class="studio-view" title="Grounding Radar View">
+          <div class="studio-view-card">
             <div class="spectrum-header">
-              <span class="section-label">Grounding Verification Status</span>
+              <span class="section-label">Grounding Verification Status & Telemetry</span>
             </div>
             
             <div class="spectrum-visual" title="Visual comparison of refusal cutoff (0.35) vs grounded zone">
               <div class="spectrum-bar">
-                <div class="spectrum-zone zone-refusal" style="width: 35%;" title="Scores below 0.35 are refused">
+                <div class="spectrum-zone zone-refusal" style="width: 35%;">
                   <span class="zone-tag">Refusal Zone</span>
                 </div>
-                <div class="spectrum-zone zone-grounded" style="width: 65%;" title="Scores >= 0.35 are synthesized with citations">
+                <div class="spectrum-zone zone-grounded" style="width: 65%;">
                   <span class="zone-tag">Grounded Zone</span>
                 </div>
               </div>
-              <div class="threshold-marker" style="left: 35%;" title="Grounding floor cutoff marker at 0.35">
+              <div class="threshold-marker" style="left: 35%;">
                 <span class="marker-line"></span>
                 <span class="marker-text">Threshold (0.35)</span>
               </div>
             </div>
 
-            <div id="latest-query-radar" class="latest-radar-box" title="Telemetry measurements for your most recent query">
-              <div class="radar-row" title="Whether the query was grounded in the document or refused">
+            <div id="latest-query-radar" class="latest-radar-box">
+              <div class="radar-row">
                 <span class="radar-lbl">Latest Query:</span>
                 <span id="radar-status" class="badge-subtle">Waiting for input</span>
               </div>
-              <div class="radar-row" title="Highest cosine similarity score among retrieved chunks">
+              <div class="radar-row">
                 <span class="radar-lbl">Max Similarity:</span>
                 <span id="radar-score" class="font-mono">--</span>
               </div>
-              <div class="radar-row" title="Time taken to search FAISS index in milliseconds">
+              <div class="radar-row">
                 <span class="radar-lbl">Retrieval Latency:</span>
                 <span id="radar-ret-latency" class="font-mono">--</span>
               </div>
-              <div class="radar-row" title="Time taken for Groq Llama 3.3 to synthesize the grounded answer">
+              <div class="radar-row">
                 <span class="radar-lbl">Generation Latency:</span>
                 <span id="radar-gen-latency" class="font-mono">--</span>
               </div>
             </div>
 
-            <p class="spectrum-note" title="Explanation of grounding guarantee">
-              <strong>Grounding Protocol:</strong> If a question lacks sufficient semantic similarity to the document (&lt; 0.35), the LLM generation is bypassed in code to return a deterministic refusal.
+            <p class="spectrum-note">
+              <strong>Grounding Protocol:</strong> If a question lacks sufficient semantic similarity to the document (&lt; 0.35), LLM generation is bypassed in code to return a deterministic refusal.
             </p>
           </div>
         </div>
 
-      </aside>
-
-      <!-- Right Column: Verification & Q&A Stream -->
-      <section class="workbench-main">
-        <div class="chat-viewport">
-          
-          <!-- Conversation Stream -->
-          <div id="chat-thread" class="chat-thread" title="Conversation thread containing questions, grounded answers, and page citations">
-            
-            <!-- Empty State / Welcome -->
-            <div id="empty-state" class="empty-state" title="Welcome banner">
-              <div class="empty-dossier-icon" title="Veritas Document Icon">
-                <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-                  <polyline points="14 2 14 8 20 8"></polyline>
-                  <line x1="16" y1="13" x2="8" y2="13"></line>
-                  <line x1="16" y1="17" x2="8" y2="17"></line>
-                  <polyline points="10 9 9 9 8 9"></polyline>
-                </svg>
-              </div>
-              <h2 class="empty-title">Ask Questions About Your PDF</h2>
-              <p class="empty-subtitle">
-                Upload a document on the left or click <strong>"Try Sample Document"</strong>. Ask any question to receive synthesized answers with exact page-level citations.
-              </p>
-            </div>
-
-          </div>
-
-          <!-- Floating Starter Chips (Shown when doc is loaded) -->
-          <div id="starter-chips" class="starter-chips hidden" title="One-click suggested questions based on your document">
-            <span class="starter-label" title="Click any chip below to submit an instant query">Suggested Questions:</span>
-            <button class="chip" data-query="What is this document about?" title="Ask: What is this document about?">Document Summary</button>
-            <button class="chip" data-query="What are the key budgets, costs, or financial allocations?" title="Ask: What are the key budgets, costs, or financial allocations?">Budgets & Costs</button>
-            <button class="chip" data-query="What are the deadlines, milestones, or important dates?" title="Ask: What are the deadlines, milestones, or important dates?">Milestones & Deadlines</button>
-            <button class="chip" data-query="How do warp drive antimatter engines navigate through gravitational wormholes?" title="Test refusal with an ungrounded question not mentioned in the PDF">Test Refusal (Out-of-Scope) ⚡</button>
-          </div>
-
-          <!-- Bottom Prompt Composer -->
-          <div class="composer-container" title="Question input composer">
-            <form id="composer-form" class="composer-form">
-              <div class="composer-box" title="Question input field">
-                <button type="button" id="btn-voice-dictate" class="btn-dictate" title="Voice Input: Speak your question via speech recognition">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"></path>
-                    <path d="M19 10v2a7 7 0 0 1-14 0v-2"></path>
-                    <line x1="12" y1="19" x2="12" y2="23"></line>
-                    <line x1="8" y1="23" x2="16" y2="23"></line>
-                  </svg>
-                </button>
-                <textarea 
-                  id="composer-input" 
-                  class="composer-textarea"
-                  placeholder="Upload a PDF above to begin asking questions..."
-                  rows="1"
-                  disabled
-                  title="Type your question here (Press Enter to submit)"
-                ></textarea>
-                
-                <button type="submit" id="composer-send" class="btn-send" disabled title="Send question (Enter)">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                    <line x1="22" y1="2" x2="11" y2="13"></line>
-                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
-                  </svg>
-                </button>
-              </div>
-
-              <div class="composer-footer">
-                <span class="footer-hint" title="Keyboard shortcuts">Press <strong>Enter</strong> to send &bull; <strong>Shift+Enter</strong> for newline &bull; <strong>Cmd+K</strong> focus</span>
-                <span class="footer-guarantee" title="System guarantee">✓ Grounded Synthesis &bull; Exact Page Citations</span>
-              </div>
-            </form>
-          </div>
-
-        </div>
       </section>
-
-    </main>
+    </div>
   </div>
 
   <script src="/static/app.js"></script>

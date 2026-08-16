@@ -72,24 +72,37 @@ document.addEventListener('DOMContentLoaded', () => {
   refreshEngineStatus();
 
   // --------------------------------------------------------------------------
-  // Tab Switching
   // --------------------------------------------------------------------------
-  tabBtns.forEach(btn => {
+  // Studio Sidebar View Switching
+  // --------------------------------------------------------------------------
+  const sidebarNavItems = document.querySelectorAll('.sidebar-nav-item[data-view]');
+  const studioViews = document.querySelectorAll('.studio-view');
+
+  function activateView(viewId) {
+    sidebarNavItems.forEach(b => {
+      b.classList.toggle('active', b.getAttribute('data-view') === viewId);
+    });
+    studioViews.forEach(v => {
+      v.classList.toggle('active', v.id === viewId);
+    });
+
+    if (viewId === 'view-graph' && currentDossier) {
+      setTimeout(() => initKnowledgeGraph(currentDossier), 60);
+    }
+  }
+
+  sidebarNavItems.forEach(btn => {
     btn.addEventListener('click', () => {
-      const tabId = btn.getAttribute('data-tab');
-      activateTab(tabId);
-      if (tabId === 'knowledge-graph' && currentDossier) {
-        setTimeout(() => initKnowledgeGraph(currentDossier), 50);
-      }
+      const viewId = btn.getAttribute('data-view');
+      activateView(viewId);
     });
   });
 
-  function activateTab(tabId) {
-    tabBtns.forEach(b => {
-      b.classList.toggle('active', b.getAttribute('data-tab') === tabId);
-    });
-    tabPanels.forEach(p => {
-      p.classList.toggle('active', p.id === `panel-${tabId}`);
+  const btnSidebarHistory = document.getElementById('btn-sidebar-history');
+  if (btnSidebarHistory) {
+    btnSidebarHistory.addEventListener('click', () => {
+      renderHistoryModal();
+      if (historyModal) historyModal.classList.remove('hidden');
     });
   }
 
@@ -332,31 +345,35 @@ document.addEventListener('DOMContentLoaded', () => {
   // Executive Presets Handlers
   // --------------------------------------------------------------------------
   const btnVeritasBrief = document.getElementById('btn-veritas-brief');
-  const btnVeritasMetrics = document.getElementById('btn-veritas-metrics');
+  const btnVeritasFinance = document.getElementById('btn-veritas-finance') || document.getElementById('btn-veritas-metrics');
   const btnVeritasRisks = document.getElementById('btn-veritas-risks');
-  const btnVeritasQa = document.getElementById('btn-veritas-qa');
+  const btnVeritasDates = document.getElementById('btn-veritas-dates') || document.getElementById('btn-veritas-qa');
 
   if (btnVeritasBrief) {
     btnVeritasBrief.addEventListener('click', () => {
+      activateView('view-chat');
       composerInput.value = "Provide an executive strategic briefing summarizing the core mission, major objectives, and key findings.";
       composerForm.dispatchEvent(new Event('submit'));
     });
   }
-  if (btnVeritasMetrics) {
-    btnVeritasMetrics.addEventListener('click', () => {
-      composerInput.value = "Extract all key numerical metrics, financial figures, budgets, and SLAs mentioned in this document into a structured table.";
+  if (btnVeritasFinance) {
+    btnVeritasFinance.addEventListener('click', () => {
+      activateView('view-chat');
+      composerInput.value = "Extract all key numerical metrics, financial figures, budgets, and monetary allocations into a structured table.";
       composerForm.dispatchEvent(new Event('submit'));
     });
   }
   if (btnVeritasRisks) {
     btnVeritasRisks.addEventListener('click', () => {
-      composerInput.value = "Identify all operational risks, circuit breakers, technical constraints, and milestone timelines.";
+      activateView('view-chat');
+      composerInput.value = "Identify all operational risks, technical vulnerabilities, compliance liabilities, and critical warnings.";
       composerForm.dispatchEvent(new Event('submit'));
     });
   }
-  if (btnVeritasQa) {
-    btnVeritasQa.addEventListener('click', () => {
-      composerInput.value = "Generate 4 essential study questions and precise grounded answers based on this document.";
+  if (btnVeritasDates) {
+    btnVeritasDates.addEventListener('click', () => {
+      activateView('view-chat');
+      composerInput.value = "Consolidate all timelines, phase deliverables, operational milestone gates, and scheduled deadlines.";
       composerForm.dispatchEvent(new Event('submit'));
     });
   }
@@ -446,29 +463,33 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     // 3. Render Sections List
+    const vectorChunksList = document.getElementById('vector-chunks-list') || chunksList;
+    const vectorCountEl = document.getElementById('vector-indexed-count') || vectorMapCount;
     if (dossier.chunks) {
-      vectorMapCount.textContent = `${dossier.chunks.length} Chunks`;
-      chunksList.innerHTML = '';
-      dossier.chunks.forEach(ch => {
-        const item = document.createElement('div');
-        item.className = 'chunk-item-card';
-        const chunkLabel = ch.unit_label || `Section ${ch.page}`;
-        item.innerHTML = `
-          <div class="chunk-item-meta">
-            <span>Chunk #${ch.chunk_id + 1}</span>
-            <span>${escapeHtml(chunkLabel)}</span>
-          </div>
-          <div class="chunk-item-body">${escapeHtml(ch.text)}</div>
-        `;
-        chunksList.appendChild(item);
-      });
+      if (vectorCountEl) vectorCountEl.textContent = `${dossier.chunks.length} Chunks Indexed`;
+      if (vectorChunksList) {
+        vectorChunksList.innerHTML = '';
+        dossier.chunks.forEach(ch => {
+          const item = document.createElement('div');
+          item.className = 'chunk-item-card';
+          const chunkLabel = ch.unit_label || `Section ${ch.page}`;
+          item.innerHTML = `
+            <div class="chunk-item-meta">
+              <span>Chunk #${ch.chunk_id + 1}</span>
+              <span>${escapeHtml(chunkLabel)}</span>
+            </div>
+            <div class="chunk-item-body">${escapeHtml(ch.text)}</div>
+          `;
+          vectorChunksList.appendChild(item);
+        });
+      }
     }
 
     // Initialize Knowledge Graph
     initKnowledgeGraph(dossier);
 
-    // Default activate document viewer tab
-    activateTab('doc-viewer');
+    // Default activate Grounded Chat view
+    activateView('view-chat');
   }
 
   // --------------------------------------------------------------------------
@@ -773,14 +794,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function updateHistoryBadge() {
     const list = getDocHistory();
-    if (historyBadgeCount) {
-      if (list.length > 0) {
-        historyBadgeCount.textContent = list.length;
-        historyBadgeCount.classList.remove('hidden');
-      } else {
-        historyBadgeCount.classList.add('hidden');
+    const sidebarHistoryCount = document.getElementById('sidebar-history-count');
+    [historyBadgeCount, sidebarHistoryCount].forEach(el => {
+      if (el) {
+        if (list.length > 0) {
+          el.textContent = list.length;
+          el.classList.remove('hidden');
+        } else {
+          el.classList.add('hidden');
+        }
       }
-    }
+    });
   }
 
   function renderHistoryModal() {
