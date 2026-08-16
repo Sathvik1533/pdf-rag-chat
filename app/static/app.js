@@ -47,9 +47,62 @@ document.addEventListener('DOMContentLoaded', () => {
   const composerInput = document.getElementById('composer-input');
   const composerSend = document.getElementById('composer-submit') || document.getElementById('composer-send');
 
-  // Session state
+  // Session state & Persistent Storage Identifiers
+  function getOrCreateSessionId() {
+    let sid = localStorage.getItem('veritas_session_id');
+    if (!sid || sid.length < 8) {
+      sid = 'sess_' + Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
+      localStorage.setItem('veritas_session_id', sid);
+    }
+    return sid;
+  }
+  const currentSessionId = getOrCreateSessionId();
+
+  // Unified API Fetcher with Guaranteed X-Session-ID Header Injection
+  async function apiFetch(url, options = {}) {
+    options.headers = options.headers || {};
+    if (options.headers instanceof Headers) {
+      options.headers.set('X-Session-ID', currentSessionId);
+    } else {
+      options.headers['X-Session-ID'] = currentSessionId;
+    }
+    return fetch(url, options);
+  }
+
   let currentDossier = null;
   let conversationHistory = [];
+
+  function saveChatThread() {
+    try {
+      localStorage.setItem(`veritas_chat_thread_${currentSessionId}`, JSON.stringify(conversationHistory));
+    } catch (e) {
+      console.warn('Could not save chat thread:', e);
+    }
+  }
+
+  function restoreChatThread() {
+    try {
+      const raw = localStorage.getItem(`veritas_chat_thread_${currentSessionId}`);
+      if (raw) {
+        const msgs = JSON.parse(raw);
+        if (Array.isArray(msgs) && msgs.length > 0) {
+          conversationHistory = msgs;
+          if (emptyState) emptyState.classList.add('hidden');
+          chatThread.innerHTML = '';
+          msgs.forEach(msg => {
+            if (msg.role === 'user') {
+              appendUserBubble(msg.text, false);
+            } else if (msg.role === 'assistant') {
+              appendAssistantBubble(msg.data, false);
+            }
+          });
+          scrollStreamToBottom();
+        }
+      }
+    } catch (e) {
+      console.warn('Could not restore chat thread:', e);
+    }
+  }
 
   // --------------------------------------------------------------------------
   // Theme Toggle (Light Ivory / Dark Obsidian)
@@ -68,7 +121,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // Check initial status
+  // Check initial status & restore active document state
   refreshEngineStatus();
 
   // --------------------------------------------------------------------------
@@ -188,7 +241,7 @@ document.addEventListener('DOMContentLoaded', () => {
       loadSampleBtn.disabled = true;
       loadSampleBtn.innerHTML = '<span>Loading...</span>';
       
-      const res = await fetch('/sample-pdf');
+      const res = await apiFetch('/sample-pdf');
       if (!res.ok) throw new Error('Could not fetch sample document');
       
       const blob = await res.blob();
@@ -211,23 +264,26 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  async function ingestPdfFile(file) {
+  async function ingestPdfFile(file, isSilentRehydration = false) {
     const formData = new FormData();
     formData.append('file', file);
 
-    // Persist file bytes to client-side IndexedDB for seamless 1-click switching
+    // Persist file bytes to client-side IndexedDB for seamless 1-click switching & auto-rehydration
     if (file && file.name) {
       DocStore.saveFile(file.name, file);
+      localStorage.setItem('veritas_active_doc', file.name);
     }
 
     // UI Loading State
     ingestLoader.classList.remove('hidden');
-    ingestLoaderText.textContent = `Reading "${file.name}" and extracting searchable content...`;
+    ingestLoaderText.textContent = isSilentRehydration 
+      ? `Restoring "${file.name}"...` 
+      : `Reading "${file.name}" and extracting searchable content...`;
     dropzone.classList.add('hidden');
     docMetaStrip.classList.add('hidden');
 
     try {
-      const response = await fetch('/upload', {
+      const response = await apiFetch('/upload', {
         method: 'POST',
         body: formData,
       });
@@ -245,7 +301,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       // Fetch Full Document Data
-      const dossierRes = await fetch('/document/dossier');
+      const dossierRes = await apiFetch('/document/dossier');
       if (dossierRes.ok) {
         try {
           const dossierText = await dossierRes.text();
@@ -288,7 +344,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
       updateSmartStarterChips(data.filename);
 
-      appendNotice(`**"${data.filename}" is ready.** ${data.total_pages} sections loaded. You can now ask questions below.`);
+      if (!isSilentRehydration) {
+        appendNotice(`**"${data.filename}" is ready.** ${data.total_pages} sections loaded. You can now ask questions below.`);
+      }
 
     } catch (err) {
       console.error(err);
@@ -298,7 +356,9 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         docMetaStrip.classList.remove('hidden');
       }
-      appendNotice(`**Upload Notice:** ${err.message}`);
+      if (!isSilentRehydration) {
+        appendNotice(`**Upload Notice:** ${err.message}`);
+      }
     }
   }
 
@@ -964,12 +1024,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
     try {
       // 1. Try instant backend in-memory switch
-      const switchRes = await fetch(`/document/switch?filename=${encodeURIComponent(filename)}`, { method: 'POST' });
+      const switchRes = await apiFetch(`/document/switch?filename=${encodeURIComponent(filename)}`, { method: 'POST' });
       if (switchRes.ok) {
         const data = await switchRes.json();
         
         // Fetch dossier for the switched document
-        const dossierRes = await fetch('/document/dossier');
+        const dossierRes = await apiFetch('/document/dossier');
         if (dossierRes.ok) {
           const dossierText = await dossierRes.text();
           currentDossier = dossierText ? JSON.parse(dossierText) : null;
@@ -980,6 +1040,8 @@ document.addEventListener('DOMContentLoaded', () => {
         metaFilename.textContent = data.filename;
         metaPages.textContent = `${data.total_pages} sections`;
         metaChunks.textContent = `${data.total_chunks} chunks`;
+
+        localStorage.setItem('veritas_active_doc', data.filename);
 
         ingestLoader.classList.add('hidden');
         docMetaStrip.classList.remove('hidden');
@@ -1095,7 +1157,7 @@ document.addEventListener('DOMContentLoaded', () => {
           e.stopPropagation();
           await DocStore.deleteFile(doc.filename);
           try {
-            await fetch(`/document/delete?filename=${encodeURIComponent(doc.filename)}`, { method: 'DELETE' });
+            await apiFetch(`/document/delete?filename=${encodeURIComponent(doc.filename)}`, { method: 'DELETE' });
           } catch (e) {}
           const updated = getDocHistory().filter((_, i) => i !== idx);
           localStorage.setItem('veritas_doc_history', JSON.stringify(updated));
@@ -1323,7 +1385,7 @@ document.addEventListener('DOMContentLoaded', () => {
         threshold: parseFloat(cfgThreshold.value),
       };
 
-      const response = await fetch('/chat', {
+      const response = await apiFetch('/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
@@ -1347,14 +1409,8 @@ document.addEventListener('DOMContentLoaded', () => {
       // Update Telemetry Panel
       updateTelemetryRadar(data);
 
-      // Record in Session History
-      conversationHistory.push({
-        timestamp: new Date().toISOString(),
-        query,
-        response: data
-      });
-
-      appendAssistantBubble(data);
+      // Render Assistant Bubble and persist to localStorage
+      appendAssistantBubble(data, true);
 
     } catch (err) {
       removeLoadingBubble(loaderId);
@@ -1379,7 +1435,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // --------------------------------------------------------------------------
   // Message Rendering Functions
   // --------------------------------------------------------------------------
-  function appendUserBubble(text) {
+  function appendUserBubble(text, shouldSave = true) {
     if (emptyState) emptyState.classList.add('hidden');
 
     const row = document.createElement('div');
@@ -1397,9 +1453,18 @@ document.addEventListener('DOMContentLoaded', () => {
     row.appendChild(bubble);
     chatThread.appendChild(row);
     scrollStreamToBottom();
+
+    if (shouldSave) {
+      conversationHistory.push({
+        role: 'user',
+        text: text,
+        timestamp: new Date().toISOString()
+      });
+      saveChatThread();
+    }
   }
 
-  function appendAssistantBubble(data) {
+  function appendAssistantBubble(data, shouldSave = true) {
     if (emptyState) emptyState.classList.add('hidden');
 
     const row = document.createElement('div');
@@ -1671,6 +1736,15 @@ document.addEventListener('DOMContentLoaded', () => {
     row.appendChild(bubble);
     chatThread.appendChild(row);
     scrollStreamToBottom();
+
+    if (shouldSave) {
+      conversationHistory.push({
+        role: 'assistant',
+        data: data,
+        timestamp: new Date().toISOString()
+      });
+      saveChatThread();
+    }
   }
 
   function appendNotice(text) {
@@ -1745,30 +1819,53 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function refreshEngineStatus() {
     try {
-      const res = await fetch('/status');
+      const res = await apiFetch('/status');
       if (res.ok) {
         const data = await res.json();
         if (data.indexed) {
+          localStorage.setItem('veritas_active_doc', data.document_name);
           metaFilename.textContent = data.document_name;
           metaPages.textContent = `${data.total_pages} sections`;
           metaChunks.textContent = `${data.total_chunks} chunks`;
           docMetaStrip.classList.remove('hidden');
-          dropzone.classList.add('hidden'); // Guarantee dropzone is hidden on load
+          dropzone.classList.add('hidden');
           composerInput.disabled = false;
           composerSend.disabled = false;
           composerInput.placeholder = `Ask any question about ${data.document_name}...`;
           starterChips.classList.remove('hidden');
           updateSmartStarterChips(data.document_name);
 
-          const dossierRes = await fetch('/document/dossier');
+          const dossierRes = await apiFetch('/document/dossier');
           if (dossierRes.ok) {
             currentDossier = await dossierRes.json();
             renderDocumentDossier(currentDossier);
           }
+
+          restoreChatThread();
+          return;
         }
       }
+
+      // If server has no active index (e.g. cold restart / redeploy), attempt auto-rehydration from IndexedDB
+      const savedDocName = localStorage.getItem('veritas_active_doc');
+      if (savedDocName) {
+        const cachedBlob = await DocStore.getFile(savedDocName);
+        if (cachedBlob) {
+          const file = new File([cachedBlob], savedDocName, { type: cachedBlob.type || 'application/octet-stream' });
+          await ingestPdfFile(file, true);
+          restoreChatThread();
+          return;
+        }
+      }
+
+      // Clean fallback if no prior document exists or if session expired
+      dropzone.classList.remove('hidden');
+      docMetaStrip.classList.add('hidden');
+      localStorage.removeItem('veritas_active_doc');
     } catch (e) {
-      console.log('Status offline');
+      console.warn('Status offline or rehydration check failed:', e);
+      dropzone.classList.remove('hidden');
+      docMetaStrip.classList.add('hidden');
     }
   }
 

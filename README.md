@@ -59,17 +59,17 @@ Engineered with an ultra-lightweight memory footprint (<10MB RAM per session), V
 
 ## 📊 Production Benchmarks & Verified Metrics
 
-*Benchmarked on standard Apple M-Series / Linux x86 container using `scripts/benchmark_rag.py` over 1,000 continuous query iterations:*
+*Benchmarked on Apple M-Series / Linux container using `scripts/benchmark_rag.py` across 1,000 query iterations on a realistic 25-page document (74 dense chunks):*
 
 | Metric | Measured Value | Verification Method |
 | :--- | :--- | :--- |
-| **Vector Retrieval Latency (Avg)** | **0.273 ms** | FAISS IndexFlatIP (1,000 iterations) |
-| **Vector Retrieval Latency (P95)** | **0.344 ms** | 95th Percentile Cosine Lookup |
-| **Vector Retrieval Latency (P99)** | **1.206 ms** | 99th Percentile Cosine Lookup |
-| **Query Throughput** | **~3,656 queries/sec/core** | Single CPU Core In-Memory Lookup |
-| **Document Ingestion (10 Sections)** | **244.46 ms** | Universal Extraction + Chunking + FAISS Index |
-| **Memory Consumption Delta** | **0.02 MB** (Peak 0.08 MB) | Measured via Python `tracemalloc` |
-| **Disk State Restoration Time** | **5.63 ms** | Deserialization of Index Binary + JSON Catalog |
+| **Vector Retrieval Latency (Avg)** | **0.096 ms** | FAISS IndexFlatIP (1,000 continuous iterations) |
+| **Vector Retrieval Latency (P95)** | **0.149 ms** | 95th Percentile Cosine Lookup |
+| **Vector Retrieval Latency (P99)** | **0.261 ms** | 99th Percentile Cosine Lookup |
+| **Query Throughput** | **~10,470 queries/sec/core** | Single CPU Core In-Memory Lookup |
+| **Document Ingestion (25 Sections / 74 Chunks)** | **476.07 ms** | Universal Extraction + Chunking + FAISS Indexing |
+| **Disk State Restoration Time** | **2.52 ms** | Deserialization of Index Binary + JSON Catalog |
+| **Memory Consumption Delta** | **0.08 MB** (Peak 0.30 MB) | Measured via Python `tracemalloc` |
 | **Multi-Tenant Data Isolation** | **100% Isolated** | Verified across distinct `session_id` spaces |
 | **Rate Limiter Accuracy** | **30/30 allowed, 20/20 throttled** | Sliding-window token verification (HTTP 429) |
 

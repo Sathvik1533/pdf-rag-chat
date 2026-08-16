@@ -13,7 +13,7 @@
     "total_pages": 1,
     "total_chunks": 1,
     "document_size_bytes": 71,
-    "saved_at": 1786873616.615941
+    "saved_at": 1786875782.0664032
   },
   "7c854a6064c66774": {
     "session_id": "default",
@@ -21,7 +21,7 @@
     "total_pages": 1,
     "total_chunks": 1,
     "document_size_bytes": 164,
-    "saved_at": 1786875197.762163
+    "saved_at": 1786875814.148421
   },
   "e0d29765f90207b8": {
     "session_id": "test_session",
@@ -30,5 +30,13 @@
     "total_chunks": 1,
     "document_size_bytes": 260,
     "saved_at": 1786874265.911652
+  },
+  "07708a522b6f10a1": {
+    "session_id": "user_alpha",
+    "filename": "enterprise_spec_25pages.txt",
+    "total_pages": 5,
+    "total_chunks": 74,
+    "document_size_bytes": 13660,
+    "saved_at": 1786875781.824474
   }
 }
