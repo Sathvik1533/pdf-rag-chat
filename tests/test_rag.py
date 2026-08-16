@@ -91,13 +91,30 @@ def test_grounding_refusal_for_out_of_scope_query(initialized_pipeline):
     pipe = initialized_pipeline
     query = "What are the rules of medieval jousting tournaments in 14th century France?"
     
-    # Query without LLM call to test the grounding filter deterministically
     result = pipe.query(query)
     
     assert result.grounded is False
     assert result.answer == GROUNDING_REFUSAL_MESSAGE
     assert len(result.citations) == 0
     assert result.top_similarity < 0.35
+    assert result.generation_time_ms == 0.0
+
+
+def test_out_of_scope_unrelated_domain_query_short_circuits(initialized_pipeline):
+    """
+    CRITICAL TEST: Verify that unrelated domain questions deterministically
+    score below the 0.35 threshold, returning the instant fixed refusal with zero LLM tokens.
+    """
+    pipe = initialized_pipeline
+    query = "What was the administrative capital and taxation system of the ancient Roman Empire?"
+    
+    result = pipe.query(query)
+    
+    assert result.grounded is False
+    assert result.answer == GROUNDING_REFUSAL_MESSAGE
+    assert len(result.citations) == 0
+    assert result.top_similarity < 0.35
+    assert result.generation_time_ms == 0.0
 
 
 def test_fastapi_health_endpoint():

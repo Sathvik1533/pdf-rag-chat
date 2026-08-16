@@ -1896,8 +1896,7 @@ document.addEventListener('DOMContentLoaded', () => {
       auditBadge.innerHTML = `<span class="badge-dot"></span> <strong>Grounded Proof</strong> &bull; ${simPct}% Match &bull; ${escapeHtml(pageNum)}`;
     } else {
       auditBadge.className = 'grounding-audit-badge audit-refusal';
-      const simPct = (data.top_similarity * 100).toFixed(1);
-      auditBadge.innerHTML = `<span class="badge-dot dot-refusal"></span> <strong>Refused &bull; Not in Document</strong> (${simPct}% similarity)`;
+      auditBadge.innerHTML = `<span class="badge-dot dot-refusal"></span> <strong>Refused &bull; Out of Document Scope</strong>`;
     }
     bubble.appendChild(auditBadge);
 
