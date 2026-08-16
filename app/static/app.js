@@ -864,6 +864,14 @@ document.addEventListener('DOMContentLoaded', () => {
       if (historyModal) historyModal.classList.remove('hidden');
     });
   }
+
+  const btnQuickHistory = document.getElementById('btn-quick-history');
+  if (btnQuickHistory) {
+    btnQuickHistory.addEventListener('click', () => {
+      renderHistoryModal();
+      if (historyModal) historyModal.classList.remove('hidden');
+    });
+  }
   if (closeHistoryBtn) {
     closeHistoryBtn.addEventListener('click', () => {
       if (historyModal) historyModal.classList.add('hidden');

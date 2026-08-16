@@ -45,6 +45,7 @@
         </div>
       </div>
 
+      <div class="nav-right">
         <button id="btn-doc-history" class="btn btn-ghost btn-sm" title="Document Library & History: View and switch between previously uploaded documents in this session">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <circle cx="12" cy="12" r="10"></circle>
@@ -296,14 +297,23 @@
                 </div>
               </div>
             </div>
-            <button type="button" id="btn-change-file" class="btn-change-file" title="Upload a different document">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                <polyline points="17 8 12 3 7 8"></polyline>
-                <line x1="12" y1="3" x2="12" y2="15"></line>
-              </svg>
-              <span>Replace File</span>
-            </button>
+            <div class="active-doc-actions">
+              <button type="button" id="btn-quick-history" class="btn-quick-history" title="View previously uploaded documents & switch library">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12 6 12 12 16 14"></polyline>
+                </svg>
+                <span>History</span>
+              </button>
+              <button type="button" id="btn-change-file" class="btn-change-file" title="Upload a different document">
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                  <polyline points="17 8 12 3 7 8"></polyline>
+                  <line x1="12" y1="3" x2="12" y2="15"></line>
+                </svg>
+                <span>Replace File</span>
+              </button>
+            </div>
           </div>
         </div>
 

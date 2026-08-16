@@ -623,6 +623,34 @@ body {
   margin-top: 0.1rem;
 }
 
+.active-doc-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.btn-quick-history {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  background: var(--bg-card-subtle);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  padding: 0.35rem 0.65rem;
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+}
+
+.btn-quick-history:hover {
+  background: var(--bg-body);
+  border-color: var(--brand);
+  color: var(--brand);
+}
+
 .btn-change-file {
   display: inline-flex;
   align-items: center;
