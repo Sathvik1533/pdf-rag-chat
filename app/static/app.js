@@ -72,23 +72,32 @@ document.addEventListener('DOMContentLoaded', () => {
   let currentDossier = null;
   let conversationHistory = [];
 
+  function getChatStorageKey(filename) {
+    const fn = filename || (currentDossier ? currentDossier.filename : (localStorage.getItem('veritas_active_doc') || 'default'));
+    return `veritas_chat_thread_${currentSessionId}_${fn}`;
+  }
+
   function saveChatThread() {
     try {
-      localStorage.setItem(`veritas_chat_thread_${currentSessionId}`, JSON.stringify(conversationHistory));
+      const key = getChatStorageKey();
+      localStorage.setItem(key, JSON.stringify(conversationHistory));
     } catch (e) {
       console.warn('Could not save chat thread:', e);
     }
   }
 
-  function restoreChatThread() {
+  function restoreChatThread(docFilename) {
     try {
-      const raw = localStorage.getItem(`veritas_chat_thread_${currentSessionId}`);
+      const key = getChatStorageKey(docFilename);
+      const raw = localStorage.getItem(key);
+      chatThread.innerHTML = '';
+      conversationHistory = [];
+
       if (raw) {
         const msgs = JSON.parse(raw);
         if (Array.isArray(msgs) && msgs.length > 0) {
           conversationHistory = msgs;
           if (emptyState) emptyState.classList.add('hidden');
-          chatThread.innerHTML = '';
           msgs.forEach(msg => {
             if (msg.role === 'user') {
               appendUserBubble(msg.text, false);
@@ -97,10 +106,15 @@ document.addEventListener('DOMContentLoaded', () => {
             }
           });
           scrollStreamToBottom();
+          return;
         }
       }
+
+      // If no prior chat messages for this document, show clean empty state
+      if (emptyState) emptyState.classList.remove('hidden');
     } catch (e) {
       console.warn('Could not restore chat thread:', e);
+      if (emptyState) emptyState.classList.remove('hidden');
     }
   }
 
@@ -494,6 +508,10 @@ document.addEventListener('DOMContentLoaded', () => {
       metaPages.textContent = `${data.total_pages} sections`;
       metaChunks.textContent = `${data.total_chunks} chunks`;
 
+      // Clear TTS playback & any previous highlights
+      TTSController.stop();
+      document.querySelectorAll('.passage-highlight').forEach(el => el.classList.remove('passage-highlight'));
+
       // Save to Document History Library
       saveDocHistory({
         filename: data.filename,
@@ -517,7 +535,9 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       if (starterChips) starterChips.classList.remove('hidden');
-      if (emptyState) emptyState.classList.add('hidden');
+
+      // Isolate Chat Workspace to this specific document
+      restoreChatThread(data.filename);
 
       updateSmartStarterChips(data.filename);
 
@@ -1162,7 +1182,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function getDocHistory() {
     try {
-      return JSON.parse(localStorage.getItem('veritas_doc_history') || '[]');
+      return JSON.parse(localStorage.getItem(`veritas_doc_history_${currentSessionId}`) || '[]');
     } catch {
       return [];
     }
@@ -1172,8 +1192,34 @@ document.addEventListener('DOMContentLoaded', () => {
     const list = getDocHistory().filter(item => item.filename !== doc.filename);
     list.unshift(doc);
     if (list.length > 15) list.pop(); // keep last 15
-    localStorage.setItem('veritas_doc_history', JSON.stringify(list));
+    localStorage.setItem(`veritas_doc_history_${currentSessionId}`, JSON.stringify(list));
     updateHistoryBadge();
+  }
+
+  async function syncDocHistoryWithBackend() {
+    try {
+      const res = await apiFetch('/document/list');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.documents && Array.isArray(data.documents)) {
+          const list = getDocHistory();
+          data.documents.forEach(d => {
+            if (!list.some(item => item.filename === d.filename)) {
+              list.push({
+                filename: d.filename,
+                total_pages: d.total_pages,
+                total_chunks: d.total_chunks,
+                timestamp: Date.now()
+              });
+            }
+          });
+          localStorage.setItem(`veritas_doc_history_${currentSessionId}`, JSON.stringify(list));
+          updateHistoryBadge();
+        }
+      }
+    } catch (e) {
+      console.warn('Could not sync history with backend:', e);
+    }
   }
 
   function updateHistoryBadge() {
@@ -1193,6 +1239,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function switchDocument(filename) {
     if (!filename) return;
+
+    // Stop active audio
+    TTSController.stop();
+    document.querySelectorAll('.passage-highlight').forEach(el => el.classList.remove('passage-highlight'));
 
     ingestLoader.classList.remove('hidden');
     ingestLoaderText.textContent = `Switching to "${filename}"...`;
@@ -1220,6 +1270,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
         localStorage.setItem('veritas_active_doc', data.filename);
 
+        // Switch active chat workspace to this specific document
+        restoreChatThread(data.filename);
+
         ingestLoader.classList.add('hidden');
         docMetaStrip.classList.remove('hidden');
 
@@ -1230,7 +1283,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (composerSend) composerSend.disabled = false;
         if (starterChips) starterChips.classList.remove('hidden');
-        if (emptyState) emptyState.classList.add('hidden');
 
         updateSmartStarterChips(data.filename);
         updateHistoryBadge();
@@ -1336,8 +1388,10 @@ document.addEventListener('DOMContentLoaded', () => {
           try {
             await apiFetch(`/document/delete?filename=${encodeURIComponent(doc.filename)}`, { method: 'DELETE' });
           } catch (e) {}
+          // Clear document chat thread
+          localStorage.removeItem(`veritas_chat_thread_${currentSessionId}_${doc.filename}`);
           const updated = getDocHistory().filter((_, i) => i !== idx);
-          localStorage.setItem('veritas_doc_history', JSON.stringify(updated));
+          localStorage.setItem(`veritas_doc_history_${currentSessionId}`, JSON.stringify(updated));
           updateHistoryBadge();
           renderHistoryModal();
         });
@@ -1851,6 +1905,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   async function refreshEngineStatus() {
     try {
+      // Sync document history with backend for this session
+      await syncDocHistoryWithBackend();
+      updateHistoryBadge();
+
       const res = await apiFetch('/status');
       if (res.ok) {
         const data = await res.json();
@@ -1873,7 +1931,7 @@ document.addEventListener('DOMContentLoaded', () => {
             renderDocumentDossier(currentDossier);
           }
 
-          restoreChatThread();
+          restoreChatThread(data.document_name);
           return;
         }
       }
@@ -1885,7 +1943,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (cachedBlob) {
           const file = new File([cachedBlob], savedDocName, { type: cachedBlob.type || 'application/octet-stream' });
           await ingestPdfFile(file, true);
-          restoreChatThread();
+          restoreChatThread(savedDocName);
           return;
         }
       }
@@ -1894,6 +1952,7 @@ document.addEventListener('DOMContentLoaded', () => {
       dropzone.classList.remove('hidden');
       docMetaStrip.classList.add('hidden');
       localStorage.removeItem('veritas_active_doc');
+      if (emptyState) emptyState.classList.remove('hidden');
     } catch (e) {
       console.warn('Status offline or rehydration check failed:', e);
       dropzone.classList.remove('hidden');

@@ -21,7 +21,7 @@
     "total_pages": 1,
     "total_chunks": 1,
     "document_size_bytes": 164,
-    "saved_at": 1786876130.559472
+    "saved_at": 1786877131.7243142
   },
   "e0d29765f90207b8": {
     "session_id": "test_session",
@@ -38,5 +38,29 @@
     "total_chunks": 74,
     "document_size_bytes": 13660,
     "saved_at": 1786875781.824474
+  },
+  "bcd6a1d1d6e23b18": {
+    "session_id": "test_switching_sess_99",
+    "filename": "falcon_spec.md",
+    "total_pages": 1,
+    "total_chunks": 1,
+    "document_size_bytes": 100,
+    "saved_at": 1786877130.9984808
+  },
+  "821b4cb06de8a211": {
+    "session_id": "test_switching_sess_99",
+    "filename": "satellites.csv",
+    "total_pages": 1,
+    "total_chunks": 1,
+    "document_size_bytes": 51,
+    "saved_at": 1786877131.4195058
+  },
+  "1f5d92fe1331407f": {
+    "session_id": "sess_user_alpha_01",
+    "filename": "secret_user1.txt",
+    "total_pages": 1,
+    "total_chunks": 1,
+    "document_size_bytes": 47,
+    "saved_at": 1786877131.58012
   }
 }

@@ -117,3 +117,79 @@ def test_fastapi_status_endpoint():
     data = response.json()
     assert "grounding_threshold" in data
     assert "groq_model" in data
+
+
+def test_document_history_and_clean_context_switching():
+    """Verify multiple documents can be indexed in a session, switched, and retrieved with zero cross-talk."""
+    client = TestClient(app)
+    session_id = "test_switching_sess_99"
+
+    # 1. Upload Doc A (Markdown)
+    doc_a_content = b"# Falcon Architecture\nFalcon is a 2026 supersonic aircraft designed for rapid transatlantic transit."
+    res_a = client.post(
+        "/upload",
+        files={"file": ("falcon_spec.md", io.BytesIO(doc_a_content), "text/markdown")},
+        headers={"X-Session-ID": session_id}
+    )
+    assert res_a.status_code == 200
+    assert res_a.json()["filename"] == "falcon_spec.md"
+
+    # 2. Upload Doc B (CSV)
+    doc_b_content = b"Satellite,Orbit,Band\nOrion-1,LEO,Ku\nOrion-2,GEO,Ka\n"
+    res_b = client.post(
+        "/upload",
+        files={"file": ("satellites.csv", io.BytesIO(doc_b_content), "text/csv")},
+        headers={"X-Session-ID": session_id}
+    )
+    assert res_b.status_code == 200
+    assert res_b.json()["filename"] == "satellites.csv"
+
+    # 3. List documents - both should be in the user's library
+    res_list = client.get("/document/list", headers={"X-Session-ID": session_id})
+    assert res_list.status_code == 200
+    docs = [d["filename"] for d in res_list.json()["documents"]]
+    assert "falcon_spec.md" in docs
+    assert "satellites.csv" in docs
+
+    # 4. Active document is now Doc B (satellites.csv)
+    # Retrieving from Doc B should match satellites
+    session = pipeline.get_session(session_id)
+    assert session.current_filename == "satellites.csv"
+    retrieved_b = pipeline.retrieve("Which band does Orion-2 use?", session_id=session_id)
+    assert len(retrieved_b) > 0
+    assert "Orion-2" in retrieved_b[0][0].text
+
+    # 5. Switch back to Doc A (falcon_spec.md)
+    res_switch = client.post(
+        "/document/switch?filename=falcon_spec.md",
+        headers={"X-Session-ID": session_id}
+    )
+    assert res_switch.status_code == 200
+    assert res_switch.json()["filename"] == "falcon_spec.md"
+
+    # 6. Retrieving from Doc A now retrieves falcon details, not satellite rows
+    retrieved_a = pipeline.retrieve("What is Falcon?", session_id=session_id)
+    assert len(retrieved_a) > 0
+    assert "supersonic aircraft" in retrieved_a[0][0].text
+
+
+def test_per_session_history_isolation():
+    """Verify that User 1's saved files/history are completely invisible to User 2."""
+    client = TestClient(app)
+    sess_user_1 = "sess_user_alpha_01"
+    sess_user_2 = "sess_user_beta_02"
+
+    # User 1 uploads proprietary doc
+    content_user_1 = b"Confidential financial records for User 1 only."
+    client.post(
+        "/upload",
+        files={"file": ("secret_user1.txt", io.BytesIO(content_user_1), "text/plain")},
+        headers={"X-Session-ID": sess_user_1}
+    )
+
+    # User 2 lists documents - should NOT see User 1's doc
+    res_user_2 = client.get("/document/list", headers={"X-Session-ID": sess_user_2})
+    assert res_user_2.status_code == 200
+    user_2_docs = [d["filename"] for d in res_user_2.json()["documents"]]
+    assert "secret_user1.txt" not in user_2_docs
+
