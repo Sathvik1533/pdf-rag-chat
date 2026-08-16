@@ -757,37 +757,86 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // --------------------------------------------------------------------------
-  // Voice Speech Dictation (Speech-to-Text)
+  // Voice Speech Dictation (Speech-to-Text with Live Visual Streaming)
   // --------------------------------------------------------------------------
   const btnVoiceDictate = document.getElementById('btn-voice-dictate');
+  let voiceRecordingPill = null;
+
   if (btnVoiceDictate) {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRecognition) {
       const recognition = new SpeechRecognition();
       recognition.continuous = false;
-      recognition.interimResults = false;
+      recognition.interimResults = true; // Stream words in real-time as spoken
       recognition.lang = 'en-US';
+
+      function showVoicePill(statusText) {
+        if (!voiceRecordingPill) {
+          voiceRecordingPill = document.createElement('div');
+          voiceRecordingPill.className = 'voice-recording-pill';
+          const composerCard = document.querySelector('.composer-card') || composerForm;
+          if (composerCard && composerCard.parentNode) {
+            composerCard.parentNode.insertBefore(voiceRecordingPill, composerCard);
+          }
+        }
+        voiceRecordingPill.innerHTML = `<span class="voice-recording-dot"></span> <span>${statusText}</span>`;
+        voiceRecordingPill.style.display = 'inline-flex';
+      }
+
+      function hideVoicePill() {
+        if (voiceRecordingPill) {
+          voiceRecordingPill.style.display = 'none';
+        }
+      }
 
       recognition.onstart = () => {
         btnVoiceDictate.classList.add('listening');
+        btnVoiceDictate.title = 'Listening to your speech... (Click to stop)';
+        showVoicePill('Listening... Speak your question now');
       };
+
       recognition.onresult = (event) => {
-        const transcript = event.results[0][0].transcript;
-        if (transcript) {
-          composerInput.value = transcript;
-          composerForm.dispatchEvent(new Event('submit'));
+        let interimTranscript = '';
+        let finalTranscript = '';
+
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            finalTranscript += event.results[i][0].transcript;
+          } else {
+            interimTranscript += event.results[i][0].transcript;
+          }
+        }
+
+        const liveText = finalTranscript || interimTranscript;
+        if (liveText && composerInput) {
+          // Visibly stream text into input box in real time
+          composerInput.value = liveText;
+          showVoicePill(`Transcribing: "${liveText.slice(0, 45)}..."`);
+        }
+
+        if (finalTranscript) {
+          composerInput.value = finalTranscript.trim();
+          hideVoicePill();
+          setTimeout(() => {
+            composerForm.dispatchEvent(new Event('submit'));
+          }, 300);
         }
       };
+
       recognition.onerror = (event) => {
         btnVoiceDictate.classList.remove('listening');
+        hideVoicePill();
         if (event.error === 'not-allowed') {
           alert('Microphone access was denied. Please allow microphone permissions in your browser URL bar to use voice dictation.');
-        } else if (event.error === 'network') {
-          console.warn('Speech recognition service network status:', event.error);
+        } else if (event.error !== 'no-speech') {
+          console.warn('Speech recognition status:', event.error);
         }
       };
+
       recognition.onend = () => {
         btnVoiceDictate.classList.remove('listening');
+        btnVoiceDictate.title = 'Voice Dictation: Speak your question';
+        hideVoicePill();
       };
 
       btnVoiceDictate.addEventListener('click', () => {
@@ -1420,14 +1469,14 @@ document.addEventListener('DOMContentLoaded', () => {
       bubble.appendChild(deck);
     }
 
-    // Message Actions Bar (Read Aloud + Copy)
+    // Message Actions Bar (Read Aloud with Synced Live Captions & Waveform + Copy)
     const actions = document.createElement('div');
     actions.className = 'msg-actions';
 
     // Read Aloud / Audio Synthesis Button
     const speakBtn = document.createElement('button');
     speakBtn.className = 'speak-btn';
-    speakBtn.title = 'Listen: Speak answer aloud using neural voice synthesis';
+    speakBtn.title = 'Listen: Speak answer aloud with live caption sync';
     speakBtn.innerHTML = `
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
@@ -1435,28 +1484,91 @@ document.addEventListener('DOMContentLoaded', () => {
       </svg>
       <span>Read Aloud</span>
     `;
+
+    let activeCaptionBar = null;
+
     speakBtn.addEventListener('click', () => {
       if ('speechSynthesis' in window) {
         if (window.speechSynthesis.speaking) {
           window.speechSynthesis.cancel();
-          speakBtn.classList.remove('speaking');
-          speakBtn.querySelector('span').textContent = 'Read Aloud';
+          cleanupTTS();
         } else {
           const plainText = data.answer.replace(/[*_#`[\]()]/g, '');
-          const utterance = new SpeechSynthesisUtterance(plainText);
-          utterance.rate = 1.05;
-          utterance.onend = () => {
-            speakBtn.classList.remove('speaking');
-            speakBtn.querySelector('span').textContent = 'Read Aloud';
-          };
-          window.speechSynthesis.speak(utterance);
+          const sentences = plainText.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [plainText];
+          let currentSentenceIndex = 0;
+
+          // 1. Show animated waveform and Stop button
           speakBtn.classList.add('speaking');
-          speakBtn.querySelector('span').textContent = 'Stop Audio';
+          speakBtn.innerHTML = `
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+              <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+            </svg>
+            <span>Stop Audio</span>
+            <div class="audio-waveform-bars">
+              <span class="waveform-bar"></span>
+              <span class="waveform-bar"></span>
+              <span class="waveform-bar"></span>
+              <span class="waveform-bar"></span>
+            </div>
+          `;
+
+          // 2. Add Live Captions Subtitle Box
+          activeCaptionBar = document.createElement('div');
+          activeCaptionBar.className = 'tts-live-caption-bar';
+          activeCaptionBar.innerHTML = `
+            <span class="tts-caption-badge">🎙️ Spoken Audio</span>
+            <span class="tts-caption-text">Reading answer aloud...</span>
+          `;
+          bubble.appendChild(activeCaptionBar);
+
+          // 3. Highlight message bubble
+          textBody.classList.add('tts-speaking-active');
+
+          const utterance = new SpeechSynthesisUtterance(plainText);
+          utterance.rate = 1.0;
+
+          utterance.onboundary = (event) => {
+            if (event.name === 'word' || event.name === 'sentence') {
+              const charIndex = event.charIndex;
+              const spokenSoFar = plainText.substring(charIndex, charIndex + 80);
+              const captionEl = activeCaptionBar ? activeCaptionBar.querySelector('.tts-caption-text') : null;
+              if (captionEl) {
+                captionEl.textContent = `"${spokenSoFar.trim()}..."`;
+              }
+            }
+          };
+
+          utterance.onend = () => {
+            cleanupTTS();
+          };
+
+          utterance.onerror = () => {
+            cleanupTTS();
+          };
+
+          window.speechSynthesis.speak(utterance);
         }
       } else {
         alert('Voice synthesis is not supported in this browser.');
       }
     });
+
+    function cleanupTTS() {
+      speakBtn.classList.remove('speaking');
+      speakBtn.innerHTML = `
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+          <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+        </svg>
+        <span>Read Aloud</span>
+      `;
+      textBody.classList.remove('tts-speaking-active');
+      if (activeCaptionBar && activeCaptionBar.parentNode) {
+        activeCaptionBar.parentNode.removeChild(activeCaptionBar);
+        activeCaptionBar = null;
+      }
+    }
 
     // Copy text button
     const copyBtn = document.createElement('button');
