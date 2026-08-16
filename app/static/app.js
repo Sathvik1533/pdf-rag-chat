@@ -660,7 +660,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Interactive mouse drag & jump events
   if (graphCanvas) {
-    function getCanvasMousePos(e) {
+    let activePointerId = null;
+    let isDragging = false;
+    let dragStartPos = { x: 0, y: 0 };
+    let dragTargetNode = null;
+
+    function getCanvasPos(e) {
       const rect = graphCanvas.getBoundingClientRect();
       return {
         x: e.clientX - rect.left,
@@ -668,60 +673,87 @@ document.addEventListener('DOMContentLoaded', () => {
       };
     }
 
-    graphCanvas.addEventListener('mousedown', (e) => {
-      const pos = getCanvasMousePos(e);
-      for (let i = 0; i < graphNodes.length; i++) {
+    function findNodeAt(x, y) {
+      for (let i = graphNodes.length - 1; i >= 0; i--) {
         const node = graphNodes[i];
-        const dist = Math.hypot(pos.x - node.x, pos.y - node.y);
-        if (dist <= node.radius + 6) {
-          draggedNode = node;
-          dragStartX = pos.x;
-          dragStartY = pos.y;
-          hasDragged = false;
-          graphCanvas.style.cursor = 'grabbing';
-          break;
+        const dist = Math.hypot(x - node.x, y - node.y);
+        if (dist <= node.radius + 8) {
+          return node;
         }
+      }
+      return null;
+    }
+
+    function stopDrag(e) {
+      if (dragTargetNode) {
+        const movedDist = Math.hypot(dragTargetNode.x - dragStartPos.x, dragTargetNode.y - dragStartPos.y);
+        
+        // If movement was small (< 6px), it's a CLICK -> jump to document page!
+        if (movedDist < 6 && dragTargetNode.page) {
+          scrollToPage(dragTargetNode.page);
+        }
+      }
+
+      if (activePointerId !== null) {
+        try {
+          graphCanvas.releasePointerCapture(activePointerId);
+        } catch (err) {}
+      }
+
+      draggedNode = null;
+      dragTargetNode = null;
+      activePointerId = null;
+      isDragging = false;
+      graphCanvas.style.cursor = hoveredNode ? 'grab' : 'default';
+    }
+
+    graphCanvas.addEventListener('pointerdown', (e) => {
+      const pos = getCanvasPos(e);
+      const node = findNodeAt(pos.x, pos.y);
+      if (node) {
+        dragTargetNode = node;
+        draggedNode = node;
+        activePointerId = e.pointerId;
+        dragStartPos = { x: node.x, y: node.y };
+        isDragging = false;
+        try {
+          graphCanvas.setPointerCapture(e.pointerId);
+        } catch (err) {}
+        graphCanvas.style.cursor = 'grabbing';
       }
     });
 
-    window.addEventListener('mousemove', (e) => {
-      if (!graphCanvas) return;
-      const pos = getCanvasMousePos(e);
+    graphCanvas.addEventListener('pointermove', (e) => {
+      const pos = getCanvasPos(e);
+      const w = parseFloat(graphCanvas.style.width) || graphCanvas.width;
+      const h = parseFloat(graphCanvas.style.height) || graphCanvas.height;
 
-      if (draggedNode) {
-        if (Math.hypot(pos.x - dragStartX, pos.y - dragStartY) > 4) {
-          hasDragged = true;
-        }
-        draggedNode.x = Math.max(draggedNode.radius, Math.min((parseFloat(graphCanvas.style.width) || graphCanvas.width) - draggedNode.radius, pos.x));
-        draggedNode.y = Math.max(draggedNode.radius, Math.min((parseFloat(graphCanvas.style.height) || graphCanvas.height) - draggedNode.radius, pos.y));
+      if (draggedNode && activePointerId === e.pointerId) {
+        isDragging = true;
+        // Clamp smoothly to canvas boundaries
+        draggedNode.x = Math.max(draggedNode.radius + 6, Math.min(w - draggedNode.radius - 6, pos.x));
+        draggedNode.y = Math.max(draggedNode.radius + 6, Math.min(h - draggedNode.radius - 6, pos.y));
         return;
       }
 
-      // Check hover
-      let found = null;
-      for (let i = 0; i < graphNodes.length; i++) {
-        const node = graphNodes[i];
-        const dist = Math.hypot(pos.x - node.x, pos.y - node.y);
-        if (dist <= node.radius + 6) {
-          found = node;
-          break;
-        }
-      }
-      hoveredNode = found;
-      graphCanvas.style.cursor = found ? 'grab' : 'default';
+      // Hover detection
+      const node = findNodeAt(pos.x, pos.y);
+      hoveredNode = node;
+      graphCanvas.style.cursor = node ? 'grab' : 'default';
     });
 
-    window.addEventListener('mouseup', () => {
-      if (draggedNode) {
-        if (!hasDragged && draggedNode.page) {
-          // It was a click, not a drag: jump to section!
-          scrollToPage(draggedNode.page);
-        }
-        draggedNode = null;
-        hasDragged = false;
-        if (graphCanvas) graphCanvas.style.cursor = hoveredNode ? 'grab' : 'default';
+    graphCanvas.addEventListener('pointerup', stopDrag);
+    graphCanvas.addEventListener('pointercancel', stopDrag);
+    graphCanvas.addEventListener('pointerleave', (e) => {
+      if (!draggedNode) {
+        hoveredNode = null;
       }
     });
+
+    // Global fail-safe release listeners
+    window.addEventListener('pointerup', stopDrag);
+    window.addEventListener('mouseup', stopDrag);
+    window.addEventListener('blur', stopDrag);
   }
 
   // --------------------------------------------------------------------------
@@ -1147,40 +1179,44 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   function scrollToPage(pageNum, highlightSnippet = null) {
-    activateTab('doc-viewer');
-    const targetPage = document.getElementById(`doc-page-${pageNum}`);
-    if (targetPage) {
-      targetPage.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    activateView('view-doc');
+    setTimeout(() => {
+      const targetPage = document.getElementById(`doc-page-${pageNum}`);
+      if (targetPage) {
+        targetPage.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        targetPage.classList.add('sheet-target-active');
+        setTimeout(() => targetPage.classList.remove('sheet-target-active'), 2800);
 
-      // Highlight passage if requested
-      if (highlightSnippet) {
-        const textContainer = document.getElementById(`page-text-${pageNum}`);
-        if (textContainer) {
-          const originalText = textContainer.textContent;
-          const cleanSnippet = highlightSnippet.replace(/\.\.\.$/, '').trim();
-          if (cleanSnippet.length > 20 && originalText.includes(cleanSnippet.substring(0, 30))) {
-            const matchIndex = originalText.indexOf(cleanSnippet.substring(0, 30));
-            if (matchIndex !== -1) {
-              const matchedLength = Math.min(cleanSnippet.length, originalText.length - matchIndex);
-              const before = originalText.substring(0, matchIndex);
-              const matched = originalText.substring(matchIndex, matchIndex + matchedLength);
-              const after = originalText.substring(matchIndex + matchedLength);
-              
-              textContainer.innerHTML = `${escapeHtml(before)}<mark class="passage-highlight">${escapeHtml(matched)}</mark>${escapeHtml(after)}`;
-              
-              setTimeout(() => {
-                textContainer.innerHTML = escapeHtml(originalText);
-              }, 6000);
+        // Highlight passage if requested
+        if (highlightSnippet) {
+          const textContainer = document.getElementById(`page-text-${pageNum}`);
+          if (textContainer) {
+            const originalText = textContainer.textContent;
+            const cleanSnippet = highlightSnippet.replace(/\.\.\.$/, '').trim();
+            if (cleanSnippet.length > 20 && originalText.includes(cleanSnippet.substring(0, 30))) {
+              const matchIndex = originalText.indexOf(cleanSnippet.substring(0, 30));
+              if (matchIndex !== -1) {
+                const matchedLength = Math.min(cleanSnippet.length, originalText.length - matchIndex);
+                const before = originalText.substring(0, matchIndex);
+                const matched = originalText.substring(matchIndex, matchIndex + matchedLength);
+                const after = originalText.substring(matchIndex + matchedLength);
+                
+                textContainer.innerHTML = `${escapeHtml(before)}<mark class="passage-highlight">${escapeHtml(matched)}</mark>${escapeHtml(after)}`;
+                
+                setTimeout(() => {
+                  textContainer.innerHTML = escapeHtml(originalText);
+                }, 6000);
+              }
             }
           }
         }
-      }
 
-      // Highlight active page pill
-      document.querySelectorAll('.page-pill-btn').forEach((btn, idx) => {
-        btn.classList.toggle('active', idx + 1 === pageNum);
-      });
-    }
+        // Highlight active page pill
+        document.querySelectorAll('.page-pill-btn').forEach((btn, idx) => {
+          btn.classList.toggle('active', idx + 1 === pageNum);
+        });
+      }
+    }, 60);
   }
 
   // --------------------------------------------------------------------------

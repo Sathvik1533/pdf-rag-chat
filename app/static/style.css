@@ -968,6 +968,12 @@ body {
   transition: all 0.25s ease;
 }
 
+.paper-sheet.sheet-target-active {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.25), var(--shadow-paper);
+  transform: translateY(-2px);
+}
+
 .paper-sheet-header {
   display: flex;
   justify-content: space-between;
