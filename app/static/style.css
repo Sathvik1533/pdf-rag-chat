@@ -1325,10 +1325,26 @@ body {
   border: 1px solid var(--emerald-border);
 }
 
+.audit-grounded .badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #10b981;
+  display: inline-block;
+}
+
 .audit-refusal {
   background: var(--amber-bg);
   color: var(--amber-text);
   border: 1px solid var(--amber-border);
+}
+
+.audit-refusal .dot-refusal {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #f59e0b;
+  display: inline-block;
 }
 
 /* Evidence Deck (Citations) */

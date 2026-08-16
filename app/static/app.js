@@ -289,7 +289,7 @@ document.addEventListener('DOMContentLoaded', () => {
       } else {
         docMetaStrip.classList.remove('hidden');
       }
-      appendNotice(`⚠️ **Upload Notice:** ${err.message}`);
+      appendNotice(`**Upload Notice:** ${err.message}`);
     }
   }
 
@@ -1138,7 +1138,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function updateTelemetryRadar(data) {
     if (radarStatus) {
-      radarStatus.textContent = data.grounded ? 'Answer Found in PDF ✓' : 'Question Not in Document (Safely Refused) ⚠️';
+      radarStatus.textContent = data.grounded ? 'Verified in Document' : 'Not in Document';
       radarStatus.className = data.grounded ? 'badge-mono text-emerald' : 'badge-mono';
     }
     if (radarScore) radarScore.textContent = `${(data.top_similarity * 100).toFixed(1)}% Confidence`;
@@ -1187,10 +1187,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (data.grounded) {
       auditBadge.className = 'grounding-audit-badge audit-grounded';
       const pageNum = data.citations && data.citations[0] ? (data.citations[0].unit_label || `Page ${data.citations[0].page}`) : 'Document';
-      auditBadge.innerHTML = `✓ Found in Document &bull; ${escapeHtml(pageNum)}`;
+      auditBadge.innerHTML = `<span class="badge-dot"></span> Found in Document &bull; ${escapeHtml(pageNum)}`;
     } else {
       auditBadge.className = 'grounding-audit-badge audit-refusal';
-      auditBadge.innerHTML = `⚠️ Not mentioned in this document`;
+      auditBadge.innerHTML = `<span class="badge-dot dot-refusal"></span> Not mentioned in this document`;
     }
     bubble.appendChild(auditBadge);
 
