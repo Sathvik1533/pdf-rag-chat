@@ -83,6 +83,13 @@ class FastDenseVectorizer:
     def __init__(self, dim: int = 384):
         self.dim = dim
 
+    STOP_WORDS = {
+        "a", "an", "the", "in", "on", "at", "to", "for", "of", "and", "or", "is",
+        "are", "was", "were", "be", "been", "by", "with", "from", "as", "it", "this",
+        "that", "these", "those", "i", "you", "he", "she", "we", "they", "me", "my",
+        "your", "our", "do", "does", "did", "have", "has", "had"
+    }
+
     def encode(self, texts: List[str], **kwargs) -> np.ndarray:
         import hashlib
         import re
@@ -90,17 +97,26 @@ class FastDenseVectorizer:
         for text in texts:
             vec = np.zeros(self.dim, dtype=np.float32)
             cleaned = re.sub(r'[^\w\s]', ' ', text.lower())
-            words = cleaned.split()
-            for word in words:
+            words = [w for w in cleaned.split() if w]
+            for idx, word in enumerate(words):
+                weight = 0.3 if word in self.STOP_WORDS else 2.5
                 # 1. Whole word hashing
                 h_word = int(hashlib.md5(word.encode()).hexdigest(), 16) % self.dim
-                vec[h_word] += 2.0
-                # 2. Sub-word character trigrams for semantic morphological matching
+                vec[h_word] += weight
+
+                # 2. Bigrams for word pairs
+                if idx < len(words) - 1:
+                    bigram = f"{word}_{words[idx+1]}"
+                    h_bigram = int(hashlib.md5(bigram.encode()).hexdigest(), 16) % self.dim
+                    vec[h_bigram] += 1.5
+
+                # 3. Sub-word character trigrams for semantic morphological matching
                 if len(word) >= 3:
                     for i in range(len(word) - 2):
                         gram = word[i:i+3]
                         h_gram = int(hashlib.md5(gram.encode()).hexdigest(), 16) % self.dim
                         vec[h_gram] += 1.0
+
             norm = np.linalg.norm(vec)
             if norm > 0:
                 vec /= norm
@@ -368,14 +384,21 @@ class RAGPipeline:
             )
 
         import re
-        # Check if the query is asking for a general document overview/summary
-        summary_intent_pattern = r"(what is this (doc|document|pdf|file|paper)|summarize|summary|overview|what does this (doc|document|pdf|file) (say|talk|discuss|contain)|explain this (doc|document|pdf)|tell me about this (doc|document|pdf))"
+        # Check if the query is asking for a general document overview, purpose, reason to read, or summary
+        summary_intent_pattern = (
+            r"(what is this (doc|document|pdf|file|paper)|summarize|summary|overview|"
+            r"what does this (doc|document|pdf|file)|explain this (doc|document|pdf)|"
+            r"tell me about this (doc|document|pdf)|why (do i|should i|must i|read|care)|"
+            r"why (is|was) this (doc|document|pdf|file)|purpose of (this|the) (doc|document|pdf|file)|"
+            r"who (should read|is this for)|takeaways|what (can i learn|will i learn)|"
+            r"tldr|introduction|main (points|objectives|takeaways|goals))"
+        )
         is_summary_query = bool(re.search(summary_intent_pattern, cleaned_question, re.IGNORECASE))
 
         # Retrieve top chunks
         t_ret_start = time.time()
         if is_summary_query:
-            # For general document summary, retrieve the opening chunks (typically page 1 overview)
+            # For general document summary/purpose, retrieve the opening chunks (typically page 1 overview)
             retrieved_items = [(chunk, 0.85) for chunk in self.chunks[:min(self.top_k, len(self.chunks))]]
         else:
             retrieved_items = self.retrieve(cleaned_question, top_k=self.top_k)
