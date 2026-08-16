@@ -1486,75 +1486,117 @@ document.addEventListener('DOMContentLoaded', () => {
     `;
 
     let activeCaptionBar = null;
+    let ttsHeartbeat = null;
 
     speakBtn.addEventListener('click', () => {
-      if ('speechSynthesis' in window) {
-        if (window.speechSynthesis.speaking) {
-          window.speechSynthesis.cancel();
-          cleanupTTS();
-        } else {
-          const plainText = data.answer.replace(/[*_#`[\]()]/g, '');
-          const sentences = plainText.match(/[^.!?]+[.!?]+|[^.!?]+$/g) || [plainText];
-          let currentSentenceIndex = 0;
-
-          // 1. Show animated waveform and Stop button
-          speakBtn.classList.add('speaking');
-          speakBtn.innerHTML = `
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
-              <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
-            </svg>
-            <span>Stop Audio</span>
-            <div class="audio-waveform-bars">
-              <span class="waveform-bar"></span>
-              <span class="waveform-bar"></span>
-              <span class="waveform-bar"></span>
-              <span class="waveform-bar"></span>
-            </div>
-          `;
-
-          // 2. Add Live Captions Subtitle Box
-          activeCaptionBar = document.createElement('div');
-          activeCaptionBar.className = 'tts-live-caption-bar';
-          activeCaptionBar.innerHTML = `
-            <span class="tts-caption-badge">🎙️ Spoken Audio</span>
-            <span class="tts-caption-text">Reading answer aloud...</span>
-          `;
-          bubble.appendChild(activeCaptionBar);
-
-          // 3. Highlight message bubble
-          textBody.classList.add('tts-speaking-active');
-
-          const utterance = new SpeechSynthesisUtterance(plainText);
-          utterance.rate = 1.0;
-
-          utterance.onboundary = (event) => {
-            if (event.name === 'word' || event.name === 'sentence') {
-              const charIndex = event.charIndex;
-              const spokenSoFar = plainText.substring(charIndex, charIndex + 80);
-              const captionEl = activeCaptionBar ? activeCaptionBar.querySelector('.tts-caption-text') : null;
-              if (captionEl) {
-                captionEl.textContent = `"${spokenSoFar.trim()}..."`;
-              }
-            }
-          };
-
-          utterance.onend = () => {
-            cleanupTTS();
-          };
-
-          utterance.onerror = () => {
-            cleanupTTS();
-          };
-
-          window.speechSynthesis.speak(utterance);
-        }
-      } else {
+      if (!('speechSynthesis' in window)) {
         alert('Voice synthesis is not supported in this browser.');
+        return;
       }
+
+      // If currently speaking, STOP immediately
+      if (speakBtn.classList.contains('speaking') || window.speechSynthesis.speaking) {
+        window.speechSynthesis.cancel();
+        cleanupTTS();
+        return;
+      }
+
+      // Clear any prior speech queue
+      window.speechSynthesis.cancel();
+      if (window.speechSynthesis.paused) {
+        window.speechSynthesis.resume();
+      }
+
+      const plainText = data.answer.replace(/[*_#`[\]()]/g, '').trim();
+      if (!plainText) return;
+
+      // 1. Update Button to Active "Stop Audio" State with Animated Waveform
+      speakBtn.classList.add('speaking');
+      speakBtn.innerHTML = `
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+          <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+        </svg>
+        <span>Stop Audio</span>
+        <div class="audio-waveform-bars">
+          <span class="waveform-bar"></span>
+          <span class="waveform-bar"></span>
+          <span class="waveform-bar"></span>
+          <span class="waveform-bar"></span>
+        </div>
+      `;
+
+      // 2. Add Live Captions Subtitle Box
+      activeCaptionBar = document.createElement('div');
+      activeCaptionBar.className = 'tts-live-caption-bar';
+      activeCaptionBar.innerHTML = `
+        <span class="tts-caption-badge">🎙️ Spoken Audio</span>
+        <span class="tts-caption-text">Reading answer aloud...</span>
+      `;
+      bubble.appendChild(activeCaptionBar);
+
+      // 3. Highlight message bubble
+      textBody.classList.add('tts-speaking-active');
+
+      // 4. Create Utterance and pin globally to avoid Chrome garbage collection
+      const utterance = new SpeechSynthesisUtterance(plainText);
+      window._activeTTSUtterance = utterance; // Pin to window
+      utterance.rate = 1.0;
+      utterance.pitch = 1.0;
+      utterance.volume = 1.0;
+
+      // Select high-quality English voice if available
+      const voices = window.speechSynthesis.getVoices();
+      if (voices && voices.length > 0) {
+        const preferred = voices.find(v => v.lang.startsWith('en') && (v.name.includes('Google') || v.name.includes('Natural') || v.name.includes('Samantha') || v.name.includes('Daniel') || v.default)) || voices[0];
+        if (preferred) utterance.voice = preferred;
+      }
+
+      utterance.onboundary = (event) => {
+        if (event.name === 'word' || event.name === 'sentence') {
+          const charIndex = event.charIndex;
+          const spokenSnippet = plainText.substring(charIndex, charIndex + 80);
+          const captionEl = activeCaptionBar ? activeCaptionBar.querySelector('.tts-caption-text') : null;
+          if (captionEl) {
+            captionEl.textContent = `"${spokenSnippet.trim()}..."`;
+          }
+        }
+      };
+
+      utterance.onstart = () => {
+        const captionEl = activeCaptionBar ? activeCaptionBar.querySelector('.tts-caption-text') : null;
+        if (captionEl) {
+          captionEl.textContent = `"${plainText.substring(0, 80)}..."`;
+        }
+      };
+
+      utterance.onend = () => {
+        cleanupTTS();
+      };
+
+      utterance.onerror = (e) => {
+        console.warn('TTS playback error:', e);
+        cleanupTTS();
+      };
+
+      // Chrome Heartbeat to prevent premature audio pause
+      clearInterval(ttsHeartbeat);
+      ttsHeartbeat = setInterval(() => {
+        if (window.speechSynthesis.speaking) {
+          window.speechSynthesis.pause();
+          window.speechSynthesis.resume();
+        } else {
+          clearInterval(ttsHeartbeat);
+        }
+      }, 10000);
+
+      window.speechSynthesis.speak(utterance);
     });
 
     function cleanupTTS() {
+      clearInterval(ttsHeartbeat);
+      ttsHeartbeat = null;
+      window._activeTTSUtterance = null;
       speakBtn.classList.remove('speaking');
       speakBtn.innerHTML = `
         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
