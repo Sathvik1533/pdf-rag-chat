@@ -1180,6 +1180,12 @@ body {
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: calc(100vh - 110px);
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  box-shadow: var(--shadow-subtle);
 }
 
 .chat-thread {
@@ -1475,18 +1481,25 @@ body {
 .composer-container {
   background: var(--bg-card);
   border-top: 1px solid var(--border-subtle);
-  padding: 1rem 1.75rem 1.25rem;
+  padding: 0.85rem 1.5rem 0.85rem;
+  width: 100%;
+}
+
+.composer-form {
+  width: 100%;
 }
 
 .composer-box {
   display: flex;
-  align-items: flex-end;
-  gap: 0.65rem;
+  align-items: center;
+  gap: 0.75rem;
   background: var(--bg-card-subtle);
-  border: 1px solid var(--border-subtle);
-  border-radius: var(--r-md);
-  padding: 0.5rem 0.75rem;
-  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  border: 1.5px solid var(--border-subtle);
+  border-radius: 12px;
+  padding: 0.65rem 0.85rem;
+  transition: all 0.2s ease;
+  width: 100%;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
 }
 
 .composer-box:focus-within {
@@ -1495,94 +1508,97 @@ body {
   box-shadow: 0 0 0 3px var(--primary-tint);
 }
 
-.composer-textarea {
+#composer-input {
   flex: 1;
+  width: 100%;
   border: none;
   background: transparent;
   outline: none;
   font-family: var(--font-family);
-  font-size: 0.885rem;
+  font-size: 0.95rem;
   color: var(--text-main);
   resize: none;
-  max-height: 140px;
+  min-height: 24px;
+  max-height: 160px;
   line-height: 1.5;
-  padding: 0.2rem 0;
+  padding: 0.15rem 0;
+  display: block;
 }
 
-.btn-send {
-  background: var(--primary);
-  color: #ffffff;
+#composer-input::placeholder {
+  color: var(--text-muted);
+}
+
+.btn-dictate {
+  background: transparent;
   border: none;
-  border-radius: var(--r-sm);
-  width: 32px;
-  height: 32px;
+  color: var(--text-muted);
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: background 0.15s ease;
+  transition: all 0.15s ease;
   flex-shrink: 0;
 }
 
-.btn-send:hover:not(:disabled) {
-  background: var(--primary-hover);
+.btn-dictate:hover {
+  background: var(--bg-card-hover);
+  color: var(--primary);
 }
 
-.btn-send:disabled {
+.btn-dictate.listening {
+  background: rgba(239, 68, 68, 0.15);
+  color: #ef4444;
+  animation: pulse-mic 1s infinite;
+}
+
+@keyframes pulse-mic {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.1); }
+}
+
+.btn-submit {
+  background: var(--primary);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.btn-submit:hover:not(:disabled) {
+  background: var(--primary-hover);
+  transform: translateY(-1px);
+  box-shadow: 0 2px 6px rgba(37, 99, 235, 0.3);
+}
+
+.btn-submit:disabled {
   background: var(--border-medium);
   cursor: not-allowed;
   opacity: 0.5;
 }
 
-.composer-footer {
+.composer-meta {
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-start;
   align-items: center;
-  font-size: 0.7rem;
+  font-size: 0.72rem;
   color: var(--text-muted);
-  margin-top: 0.5rem;
-  padding: 0 0.2rem;
-}
-
-.footer-guarantee {
-  font-family: var(--font-mono);
-  color: var(--emerald-text);
-  font-weight: 500;
+  margin-top: 0.45rem;
+  padding: 0 0.35rem;
 }
 
 .hidden {
   display: none !important;
-}
-
-/* Dictation Button */
-.btn-dictate {
-  background: transparent;
-  border: none;
-  color: var(--text-muted);
-  padding: 0.35rem 0.45rem;
-  border-radius: var(--r-sm);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.15s ease;
-}
-
-.btn-dictate:hover {
-  color: var(--primary);
-  background: var(--primary-tint);
-}
-
-.btn-dictate.listening {
-  color: #ef4444;
-  background: rgba(239, 68, 68, 0.15);
-  animation: pulseDictate 1.2s infinite ease-in-out;
-}
-
-@keyframes pulseDictate {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.15); }
-  100% { transform: scale(1); }
 }
 
 /* Knowledge Graph Canvas Panel */
