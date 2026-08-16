@@ -21,14 +21,14 @@
     "total_pages": 1,
     "total_chunks": 1,
     "document_size_bytes": 164,
-    "saved_at": 1786873739.440856
+    "saved_at": 1786874329.145426
   },
   "e0d29765f90207b8": {
     "session_id": "test_session",
     "filename": "Knowledge transfer.pdf",
     "total_pages": 1,
     "total_chunks": 1,
-    "document_size_bytes": 283,
-    "saved_at": 1786874195.8326862
+    "document_size_bytes": 260,
+    "saved_at": 1786874265.911652
   }
 }

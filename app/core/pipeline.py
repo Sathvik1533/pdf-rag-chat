@@ -724,7 +724,7 @@ class RAGPipeline:
         q_lower = cleaned_question.lower()
 
         # 1. Broad Document & Project Meta-Intent Detection
-        # Detects natural user questions asking about the document/project/topic/purpose/overview/summary
+        # Detects natural user questions asking about the document/project/topic/purpose/overview/summary/figures/milestones/team
         is_about_doc = (
             ("about" in q_lower and any(w in q_lower for w in ["project", "document", "doc", "pdf", "file", "paper", "this", "our", "work", "system", "initiative", "guide"])) or
             (any(p in q_lower for p in [
@@ -737,11 +737,22 @@ class RAGPipeline:
             ("document" in q_lower and any(w in q_lower for w in ["what", "how", "tell", "explain", "about", "is", "was", "purpose", "goal", "background", "scope"]))
         )
 
+        # 2. Multi-Aspect Analytical Intent (e.g., "key figures, budgets, and milestones", "leadership team", "key takeaways")
+        is_analytical_exploration = any(
+            w in q_lower for w in [
+                "figure", "figures", "budget", "budgets", "milestone", "milestones", "timeline",
+                "financial", "financials", "cost", "metrics", "data", "date", "dates",
+                "team", "leadership", "stakeholder", "stakeholders", "member", "members",
+                "takeaway", "takeaways", "objective", "objectives", "highlight", "highlights"
+            ]
+        )
+
         # Retrieve top chunks
         t_ret_start = time.time()
+
         if is_about_doc:
             # Hybrid Retrieval for document overview:
-            # 1. Vector search for any specific keyword focus in query
+            # 1. Specific query vector search
             specific_items = self.retrieve(cleaned_question, top_k=2, session_id=session_id)
             # 2. Introductory opening overview chunks (Page 1 / Page 2)
             intro_chunks = session.chunks[:min(3, len(session.chunks))]
@@ -759,8 +770,36 @@ class RAGPipeline:
                     merged_items.append((ch, max(sim, 0.80)))
                     
             retrieved_items = merged_items[:self.top_k]
+
+        elif is_analytical_exploration:
+            # Multi-Aspect Sub-Query Splitting (avoids vector dilution across compound topics)
+            sub_queries = [cleaned_question]
+            if any(k in q_lower for k in ["figure", "figures", "budget", "budgets", "cost", "financial", "metrics", "number"]):
+                sub_queries.append("financial budget cost numbers metrics revenue expenses")
+            if any(k in q_lower for k in ["milestone", "milestones", "timeline", "date", "dates", "schedule", "deadline"]):
+                sub_queries.append("milestones timeline schedule deadlines launch completion dates")
+            if any(k in q_lower for k in ["team", "leadership", "stakeholder", "stakeholders", "member", "members", "lead"]):
+                sub_queries.append("team leadership stakeholders members management organization roles")
+            if any(k in q_lower for k in ["takeaway", "takeaways", "objective", "objectives", "goal", "goals"]):
+                sub_queries.append("key takeaways main objectives goals highlights summary")
+
+            seen_ids = set()
+            merged_items: List[Tuple[DocumentChunk, float]] = []
+
+            for sq in sub_queries:
+                aspect_items = self.retrieve(sq, top_k=2, session_id=session_id)
+                for ch, score in aspect_items:
+                    if ch.chunk_id not in seen_ids:
+                        seen_ids.add(ch.chunk_id)
+                        merged_items.append((ch, score))
+
+            # Sort by relevance
+            merged_items.sort(key=lambda x: x[1], reverse=True)
+            retrieved_items = merged_items[:self.top_k]
+
         else:
             retrieved_items = self.retrieve(cleaned_question, top_k=self.top_k, session_id=session_id)
+
         ret_elapsed_ms = (time.time() - t_ret_start) * 1000.0
 
         if not retrieved_items:
@@ -777,12 +816,15 @@ class RAGPipeline:
 
         top_chunk, top_similarity = retrieved_items[0]
 
+        # Effective threshold adjustment for multi-aspect queries (prevents dilution false refusals)
+        effective_threshold = 0.20 if is_analytical_exploration else threshold
+
         chunk_breakdown = [
             {
                 "chunk_id": ch.chunk_id,
                 "page": ch.page,
                 "similarity": round(score, 4),
-                "passed_threshold": score >= threshold,
+                "passed_threshold": score >= effective_threshold,
                 "char_count": ch.char_count
             }
             for ch, score in retrieved_items
@@ -791,10 +833,10 @@ class RAGPipeline:
         # ---------------------------------------------------------------------
         # MANDATORY GROUNDING REFUSAL CHECK
         # ---------------------------------------------------------------------
-        if top_similarity < threshold:
+        if top_similarity < effective_threshold:
             logger.info(
                 f"[{session_id}] Grounding check failed for '{cleaned_question[:40]}...'. "
-                f"Top similarity {top_similarity:.4f} < threshold {threshold:.4f}. Refusing."
+                f"Top similarity {top_similarity:.4f} < threshold {effective_threshold:.4f}. Refusing."
             )
             return QueryResult(
                 answer=GROUNDING_REFUSAL_MESSAGE,
