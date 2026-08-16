@@ -45,7 +45,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const starterChips = document.getElementById('starter-chips');
   const composerForm = document.getElementById('composer-form');
   const composerInput = document.getElementById('composer-input');
-  const composerSend = document.getElementById('composer-send');
+  const composerSend = document.getElementById('composer-submit') || document.getElementById('composer-send');
 
   // Session state
   let currentDossier = null;
@@ -269,17 +269,21 @@ document.addEventListener('DOMContentLoaded', () => {
       dropzone.classList.add('hidden'); // Ensure dropzone stays hidden!
 
       // Unlock Composer
-      composerInput.disabled = false;
-      composerSend.disabled = false;
-      composerInput.placeholder = `Ask any question about ${data.filename}...`;
-      composerInput.focus();
+      if (composerInput) {
+        composerInput.disabled = false;
+        composerInput.placeholder = `Ask any question about ${data.filename}...`;
+        composerInput.focus();
+      }
+      if (composerSend) {
+        composerSend.disabled = false;
+      }
 
-      starterChips.classList.remove('hidden');
+      if (starterChips) starterChips.classList.remove('hidden');
       if (emptyState) emptyState.classList.add('hidden');
 
       updateSmartStarterChips(data.filename);
 
-      appendNotice(`📄 **"${data.filename}" is ready!** ${data.total_pages} sections indexed. Read the document on the left or ask any question below.`);
+      appendNotice(`**"${data.filename}" is ready.** ${data.total_pages} sections loaded. You can now ask questions below.`);
 
     } catch (err) {
       console.error(err);
