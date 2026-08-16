@@ -1425,19 +1425,29 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // --------------------------------------------------------------------------
-  // Instant Floating Tooltip Engine
+  // Instant Floating Tooltip Engine (Interactive Elements Only)
   // --------------------------------------------------------------------------
   const tooltipEl = document.createElement('div');
   tooltipEl.className = 'veritas-tooltip';
   document.body.appendChild(tooltipEl);
 
   let activeTooltipTarget = null;
+  let tooltipTimeout = null;
+
+  function hideTooltip() {
+    if (tooltipTimeout) {
+      clearTimeout(tooltipTimeout);
+      tooltipTimeout = null;
+    }
+    activeTooltipTarget = null;
+    tooltipEl.classList.remove('visible');
+  }
 
   document.addEventListener('mouseover', (e) => {
-    const target = e.target.closest('[title], [data-tooltip]');
+    // Strictly match interactive buttons, links, or inputs with data-tooltip or title
+    const target = e.target.closest('button[data-tooltip], a[data-tooltip], [data-tooltip], button[title], a[title]');
     if (!target) return;
 
-    // Convert title to data-tooltip to suppress ugly browser default delay
     if (target.hasAttribute('title')) {
       const text = target.getAttribute('title');
       if (text && text.trim().length > 0) {
@@ -1449,19 +1459,28 @@ document.addEventListener('DOMContentLoaded', () => {
     const text = target.getAttribute('data-tooltip');
     if (!text || text.trim().length === 0) return;
 
+    if (activeTooltipTarget === target) return;
     activeTooltipTarget = target;
-    tooltipEl.textContent = text;
-    tooltipEl.classList.add('visible');
 
-    positionTooltip(target);
+    if (tooltipTimeout) clearTimeout(tooltipTimeout);
+    tooltipTimeout = setTimeout(() => {
+      if (activeTooltipTarget === target) {
+        tooltipEl.textContent = text;
+        positionTooltip(target);
+        tooltipEl.classList.add('visible');
+      }
+    }, 100);
   });
 
   document.addEventListener('mouseout', (e) => {
     const target = e.target.closest('[data-tooltip]');
     if (target && target === activeTooltipTarget) {
-      activeTooltipTarget = null;
-      tooltipEl.classList.remove('visible');
+      hideTooltip();
     }
+  });
+
+  document.addEventListener('click', () => {
+    hideTooltip();
   });
 
   window.addEventListener('scroll', () => {
@@ -1473,23 +1492,24 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   function positionTooltip(target) {
+    if (!target) return;
     const rect = target.getBoundingClientRect();
     const tooltipRect = tooltipEl.getBoundingClientRect();
 
-    let top = rect.top - tooltipRect.height - 8;
+    let top = rect.top - tooltipRect.height - 6;
     let left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
     let placement = 'placement-top';
 
     // If clipping at the top, show below
-    if (top < 8) {
-      top = rect.bottom + 8;
+    if (top < 6) {
+      top = rect.bottom + 6;
       placement = 'placement-bottom';
     }
 
     // Keep within left/right bounds
-    if (left < 10) left = 10;
-    if (left + tooltipRect.width > window.innerWidth - 10) {
-      left = window.innerWidth - tooltipRect.width - 10;
+    if (left < 8) left = 8;
+    if (left + tooltipRect.width > window.innerWidth - 8) {
+      left = window.innerWidth - tooltipRect.width - 8;
     }
 
     tooltipEl.className = `veritas-tooltip visible ${placement}`;
