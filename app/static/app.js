@@ -1435,6 +1435,9 @@ document.addEventListener('DOMContentLoaded', () => {
           localStorage.setItem(`veritas_doc_history_${currentSessionId}`, JSON.stringify(updated));
           updateHistoryBadge();
           renderHistoryModal();
+          if (currentDocName === doc.filename) {
+            clearCurrentChatThread();
+          }
         });
       }
 
@@ -1469,26 +1472,45 @@ document.addEventListener('DOMContentLoaded', () => {
   updateHistoryBadge();
 
   // --------------------------------------------------------------------------
-  // Clear Current Chat Thread / New Conversation
+  // Clear Current Chat Thread / New Conversation (Full Clean Reset)
   // --------------------------------------------------------------------------
   function clearCurrentChatThread() {
     TTSController.stop();
     document.querySelectorAll('.passage-highlight').forEach(el => el.classList.remove('passage-highlight'));
 
-    const key = getChatStorageKey();
-    localStorage.removeItem(key);
+    // Clear active document context
+    currentDocName = null;
+    currentDossier = null;
+
+    // Reset workspace UI
+    if (docMetaStrip) docMetaStrip.classList.add('hidden');
+    if (dropzone) dropzone.classList.remove('hidden');
+    if (starterChips) starterChips.classList.add('hidden');
+
     conversationHistory = [];
     if (chatThread) {
       chatThread.innerHTML = '';
       chatThread.classList.add('hidden');
     }
     if (emptyState) emptyState.classList.remove('hidden');
-    if (starterChips && currentDocName) starterChips.classList.remove('hidden');
+
+    // Reset Document Reader sheets
+    if (readerPagesContainer) {
+      readerPagesContainer.innerHTML = `
+        <div class="reader-empty">
+          <p>Drop any PDF, Word doc, spreadsheet, slide deck, or text file to read pages here.</p>
+        </div>
+      `;
+    }
+    if (readerPagePills) {
+      readerPagePills.innerHTML = '<span class="no-doc-hint">Drop any file to start reading</span>';
+    }
 
     activateView('view-chat');
 
     if (composerInput) {
       composerInput.value = '';
+      composerInput.placeholder = 'Ask anything about your document...';
       composerInput.focus();
     }
   }

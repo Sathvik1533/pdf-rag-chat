@@ -108,18 +108,23 @@
     <!-- Document History & Library Modal -->
     <div id="history-modal" class="config-drawer hidden">
       <div class="config-backdrop" id="history-backdrop"></div>
-      <div class="config-card">
-        <div class="config-header">
-          <div class="config-title">
+      <div class="drawer-inner">
+        <div class="drawer-header">
+          <div class="drawer-title-group">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <circle cx="12" cy="12" r="10"></circle>
               <polyline points="12 6 12 12 16 14"></polyline>
             </svg>
             <h3>Saved Documents</h3>
           </div>
-          <button id="close-history-btn" class="btn-close" data-tooltip="Close">&times;</button>
+          <button id="close-history-btn" class="btn-modal-close" data-tooltip="Close" aria-label="Close">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
         </div>
-        <div class="config-body">
+        <div class="drawer-body">
           <p class="config-desc">Click any saved document to reload it instantly.</p>
           <div id="history-list" class="history-list">
             <!-- Rendered dynamically -->
@@ -133,7 +138,12 @@
       <div class="drawer-inner">
         <div class="drawer-header">
           <h3>Save &amp; Export Notes</h3>
-          <button id="close-export-btn" class="btn-close" data-tooltip="Close">&times;</button>
+          <button id="close-export-btn" class="btn-modal-close" data-tooltip="Close" aria-label="Close">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
         </div>
         <div class="drawer-body">
           <div class="export-options-grid">
@@ -170,7 +180,12 @@
       <div class="drawer-inner">
         <div class="drawer-header">
           <h3>Settings</h3>
-          <button id="close-config-btn" class="btn-close" data-tooltip="Close">&times;</button>
+          <button id="close-config-btn" class="btn-modal-close" data-tooltip="Close" aria-label="Close">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
         </div>
         <div class="drawer-body">
           <div class="form-group">
@@ -234,7 +249,7 @@
             <p id="ingest-loader-text" class="loader-caption">Reading document...</p>
           </div>
 
-          <!-- Active Document Header (Shown after upload) -->
+          <!-- Active Document Context Card (Shown when a document is active) -->
           <div id="doc-meta-strip" class="doc-meta-strip hidden">
             <div class="active-doc-left">
               <div class="active-doc-icon">
@@ -251,21 +266,8 @@
                 </div>
               </div>
             </div>
-            <div class="active-doc-actions">
-              <button type="button" id="btn-clear-chat" class="btn-clear-chat" data-tooltip="New Chat (Clear current thread)">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M12 20h9"></path>
-                  <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"></path>
-                </svg>
-                <span>New Chat</span>
-              </button>
-              <button type="button" id="btn-change-file" class="btn-change-file" data-tooltip="Upload another document">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
-                  <polyline points="17 8 12 3 7 8"></polyline>
-                  <line x1="12" y1="3" x2="12" y2="15"></line>
-                </svg>
-              </button>
+            <div class="active-doc-status-indicator" data-tooltip="Active Document Context">
+              <span class="active-context-dot"></span>
             </div>
           </div>
         </div>
