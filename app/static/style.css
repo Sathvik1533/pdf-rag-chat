@@ -182,25 +182,28 @@ code, pre, .badge-mono, .telemetry-val, .ledger-meta-sim, .evidence-unit-pill {
 .veritas-nav {
   background: var(--bg-card);
   border-bottom: 1px solid var(--border-precision);
-  padding: 0.65rem 1.5rem;
+  padding: 0.5rem 1.15rem;
   display: flex;
   justify-content: space-between;
   align-items: center;
   z-index: 30;
   flex-shrink: 0;
+  gap: 0.75rem;
 }
 
 .nav-left {
   display: flex;
   align-items: center;
-  gap: 1.5rem;
+  gap: 0.85rem;
+  flex-shrink: 0;
 }
 
 .nav-brand {
   display: flex;
   align-items: center;
-  gap: 0.65rem;
+  gap: 0.55rem;
   user-select: none;
+  flex-shrink: 0;
 }
 
 .brand-mark {
@@ -217,6 +220,7 @@ code, pre, .badge-mono, .telemetry-val, .ledger-meta-sim, .evidence-unit-pill {
   font-size: 0.95rem;
   letter-spacing: -0.04em;
   box-shadow: var(--shadow-subtle);
+  flex-shrink: 0;
 }
 
 body.theme-dark .brand-mark {
@@ -228,23 +232,26 @@ body.theme-dark .brand-mark {
   display: flex;
   flex-direction: column;
   line-height: 1.15;
+  flex-shrink: 0;
 }
 
 .brand-name {
-  font-size: 0.95rem;
+  font-size: 0.92rem;
   font-weight: 800;
   letter-spacing: 0.04em;
 }
 
 .brand-tag {
-  font-size: 0.68rem;
+  font-size: 0.65rem;
   font-weight: 500;
   color: var(--text-muted);
+  white-space: nowrap;
 }
+
 .telemetry-pills {
   display: flex;
   align-items: center;
-  gap: 0.45rem;
+  gap: 0.35rem;
   flex-wrap: nowrap;
   flex-shrink: 0;
 }
@@ -252,12 +259,12 @@ body.theme-dark .brand-mark {
 .pill {
   display: inline-flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.35rem;
   background: var(--bg-card-subtle);
   border: 1px solid var(--border-precision);
-  padding: 0.35rem 0.75rem;
+  padding: 0.22rem 0.6rem;
   border-radius: var(--r-full);
-  font-size: 0.72rem;
+  font-size: 0.7rem;
   font-weight: 600;
   color: var(--text-secondary);
   cursor: default;
@@ -280,7 +287,7 @@ body.theme-dark .brand-mark {
 .nav-right {
   display: flex;
   align-items: center;
-  gap: 0.4rem;
+  gap: 0.35rem;
   flex-wrap: nowrap;
   flex-shrink: 0;
 }
@@ -1987,18 +1994,18 @@ body.theme-dark .btn-history-load {
 }
 
 /* Responsive Nav Layout */
-@media (max-width: 1280px) {
+@media (max-width: 960px) {
   .telemetry-pills {
     display: none;
   }
 }
 
-@media (max-width: 860px) {
+@media (max-width: 768px) {
   .brand-titles {
     display: none;
   }
   .veritas-nav {
-    padding: 0.5rem 0.75rem;
+    padding: 0.45rem 0.65rem;
   }
   .nav-right {
     gap: 0.25rem;
