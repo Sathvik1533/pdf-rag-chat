@@ -1598,10 +1598,16 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function scrollToPage(pageNum, highlightSnippet = null) {
     activateView('view-doc');
+    
+    // Highlight active page pill immediately
+    document.querySelectorAll('.page-pill-btn').forEach((btn, idx) => {
+      btn.classList.toggle('active', idx + 1 === pageNum);
+    });
+
     setTimeout(() => {
       const targetPage = document.getElementById(`doc-page-${pageNum}`);
       if (targetPage) {
-        targetPage.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        targetPage.scrollIntoView({ behavior: 'smooth', block: 'start' });
         targetPage.classList.add('sheet-target-active');
         setTimeout(() => targetPage.classList.remove('sheet-target-active'), 2800);
 
@@ -1628,11 +1634,6 @@ document.addEventListener('DOMContentLoaded', () => {
             }
           }
         }
-
-        // Highlight active page pill
-        document.querySelectorAll('.page-pill-btn').forEach((btn, idx) => {
-          btn.classList.toggle('active', idx + 1 === pageNum);
-        });
       }
     }, 60);
   }
