@@ -90,7 +90,7 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const key = getChatStorageKey(docFilename);
       const raw = localStorage.getItem(key);
-      chatThread.innerHTML = '';
+      if (chatThread) chatThread.innerHTML = '';
       conversationHistory = [];
 
       if (raw) {
@@ -98,6 +98,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (Array.isArray(msgs) && msgs.length > 0) {
           conversationHistory = msgs;
           if (emptyState) emptyState.classList.add('hidden');
+          if (chatThread) chatThread.classList.remove('hidden');
           msgs.forEach(msg => {
             if (msg.role === 'user') {
               appendUserBubble(msg.text, false);
@@ -111,9 +112,15 @@ document.addEventListener('DOMContentLoaded', () => {
       }
 
       // If no prior chat messages for this document, show clean empty state
+      if (chatThread) {
+        chatThread.innerHTML = '';
+        chatThread.classList.add('hidden');
+      }
       if (emptyState) emptyState.classList.remove('hidden');
+      if (starterChips && currentDocName) starterChips.classList.remove('hidden');
     } catch (e) {
       console.warn('Could not restore chat thread:', e);
+      if (chatThread) chatThread.classList.add('hidden');
       if (emptyState) emptyState.classList.remove('hidden');
     }
   }
@@ -713,7 +720,7 @@ document.addEventListener('DOMContentLoaded', () => {
       readerPagePills.appendChild(pill);
     });
 
-    // 2. Render Paper Sheets
+    // 2. Render Paper Sheets with Enhanced Formatting
     readerPagesContainer.innerHTML = '';
     dossier.pages.forEach(p => {
       const sheet = document.createElement('article');
@@ -721,12 +728,47 @@ document.addEventListener('DOMContentLoaded', () => {
       sheet.id = `doc-page-${p.page}`;
       
       const labelText = p.label || `Section ${p.page}`;
+
+      // Clean Paragraph Parsing & Section Formatting
+      let bodyHtml = '';
+      if (p.text) {
+        const rawBlocks = p.text.split(/(?:\r?\n){2,}/);
+        rawBlocks.forEach(block => {
+          const trimmed = block.trim();
+          if (!trimmed) return;
+          
+          // Check for markdown headings or tables
+          if (trimmed.startsWith('#') || trimmed.startsWith('###') || trimmed.startsWith('|')) {
+            bodyHtml += `<div class="doc-heading">${escapeHtml(trimmed)}</div>`;
+          } else if (trimmed.length < 80 && (trimmed.endsWith(':') || trimmed === trimmed.toUpperCase())) {
+            bodyHtml += `<h4 class="doc-subheading">${escapeHtml(trimmed)}</h4>`;
+          } else {
+            // Split sentences if a single block is huge (> 400 chars with no newlines)
+            const sentences = trimmed.split(/(?<=[.?!])\s+(?=[A-Z0-9])/);
+            if (sentences.length > 4 && trimmed.length > 450) {
+              for (let i = 0; i < sentences.length; i += 3) {
+                const chunk = sentences.slice(i, i + 3).join(' ');
+                bodyHtml += `<p>${escapeHtml(chunk)}</p>`;
+              }
+            } else {
+              bodyHtml += `<p>${escapeHtml(trimmed)}</p>`;
+            }
+          }
+        });
+      }
+      if (!bodyHtml) bodyHtml = `<p>${escapeHtml(p.text || '')}</p>`;
+
       sheet.innerHTML = `
         <div class="paper-sheet-header">
-          <span>${escapeHtml(labelText)} of ${dossier.total_pages}</span>
-          <span>${p.char_count} characters</span>
+          <div class="sheet-header-left">
+            <span class="sheet-tag">${escapeHtml(labelText)}</span>
+            <span class="sheet-subline">Section ${p.page} of ${dossier.total_pages}</span>
+          </div>
+          <div class="sheet-header-right">
+            <span>${p.char_count} chars &bull; ~${Math.ceil(p.char_count / 5.5)} words</span>
+          </div>
         </div>
-        <div class="paper-text-body" id="page-text-${p.page}">${escapeHtml(p.text)}</div>
+        <div class="paper-text-body" id="page-text-${p.page}">${bodyHtml}</div>
       `;
       readerPagesContainer.appendChild(sheet);
     });
@@ -1436,8 +1478,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const key = getChatStorageKey();
     localStorage.removeItem(key);
     conversationHistory = [];
-    chatThread.innerHTML = '';
+    if (chatThread) {
+      chatThread.innerHTML = '';
+      chatThread.classList.add('hidden');
+    }
     if (emptyState) emptyState.classList.remove('hidden');
+    if (starterChips && currentDocName) starterChips.classList.remove('hidden');
+
+    activateView('view-chat');
 
     if (composerInput) {
       composerInput.value = '';
@@ -1696,6 +1744,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // --------------------------------------------------------------------------
   function appendUserBubble(text, shouldSave = true) {
     if (emptyState) emptyState.classList.add('hidden');
+    if (chatThread) chatThread.classList.remove('hidden');
 
     const row = document.createElement('div');
     row.className = 'msg-row msg-user';
@@ -1725,6 +1774,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   function appendAssistantBubble(data, shouldSave = true) {
     if (emptyState) emptyState.classList.add('hidden');
+    if (chatThread) chatThread.classList.remove('hidden');
 
     const row = document.createElement('div');
     row.className = 'msg-row msg-assistant';
