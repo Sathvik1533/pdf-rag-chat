@@ -215,6 +215,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const formData = new FormData();
     formData.append('file', file);
 
+    // Persist file bytes to client-side IndexedDB for seamless 1-click switching
+    if (file && file.name) {
+      DocStore.saveFile(file.name, file);
+    }
+
     // UI Loading State
     ingestLoader.classList.remove('hidden');
     ingestLoaderText.textContent = `Reading "${file.name}" and extracting searchable content...`;
@@ -771,6 +776,63 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   // --------------------------------------------------------------------------
+  // IndexedDB Client-Side Document Store (Seamless Session Persistence)
+  // --------------------------------------------------------------------------
+  const DocStore = {
+    dbName: 'veritas_doc_store',
+    storeName: 'documents',
+    async getDB() {
+      return new Promise((resolve) => {
+        try {
+          const req = indexedDB.open(this.dbName, 1);
+          req.onupgradeneeded = () => {
+            const db = req.result;
+            if (!db.objectStoreNames.contains(this.storeName)) {
+              db.createObjectStore(this.storeName, { keyPath: 'filename' });
+            }
+          };
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => resolve(null);
+        } catch (e) {
+          resolve(null);
+        }
+      });
+    },
+    async saveFile(filename, blob) {
+      try {
+        const db = await this.getDB();
+        if (!db) return;
+        const tx = db.transaction(this.storeName, 'readwrite');
+        tx.objectStore(this.storeName).put({ filename, blob, timestamp: Date.now() });
+      } catch (e) {
+        console.warn('IDB save error:', e);
+      }
+    },
+    async getFile(filename) {
+      try {
+        const db = await this.getDB();
+        if (!db) return null;
+        return new Promise((resolve) => {
+          const tx = db.transaction(this.storeName, 'readonly');
+          const req = tx.objectStore(this.storeName).get(filename);
+          req.onsuccess = () => resolve(req.result ? req.result.blob : null);
+          req.onerror = () => resolve(null);
+        });
+      } catch (e) {
+        return null;
+      }
+    },
+    async deleteFile(filename) {
+      try {
+        const db = await this.getDB();
+        if (!db) return;
+        const tx = db.transaction(this.storeName, 'readwrite');
+        tx.objectStore(this.storeName).delete(filename);
+      } catch (e) {}
+    }
+  };
+
+  // --------------------------------------------------------------------------
   // Document History & Library Manager
   // --------------------------------------------------------------------------
   const btnDocHistory = document.getElementById('btn-doc-history');
@@ -791,7 +853,7 @@ document.addEventListener('DOMContentLoaded', () => {
   function saveDocHistory(doc) {
     const list = getDocHistory().filter(item => item.filename !== doc.filename);
     list.unshift(doc);
-    if (list.length > 10) list.pop(); // keep last 10
+    if (list.length > 15) list.pop(); // keep last 15
     localStorage.setItem('veritas_doc_history', JSON.stringify(list));
     updateHistoryBadge();
   }
@@ -809,6 +871,86 @@ document.addEventListener('DOMContentLoaded', () => {
         }
       }
     });
+  }
+
+  async function switchDocument(filename) {
+    if (!filename) return;
+
+    ingestLoader.classList.remove('hidden');
+    ingestLoaderText.textContent = `Switching to "${filename}"...`;
+    dropzone.classList.add('hidden');
+    docMetaStrip.classList.add('hidden');
+
+    try {
+      // 1. Try instant backend in-memory switch
+      const switchRes = await fetch(`/document/switch?filename=${encodeURIComponent(filename)}`, { method: 'POST' });
+      if (switchRes.ok) {
+        const data = await switchRes.json();
+        
+        // Fetch dossier for the switched document
+        const dossierRes = await fetch('/document/dossier');
+        if (dossierRes.ok) {
+          const dossierText = await dossierRes.text();
+          currentDossier = dossierText ? JSON.parse(dossierText) : null;
+          if (currentDossier) renderDocumentDossier(currentDossier);
+        }
+
+        // Update Meta Strip
+        metaFilename.textContent = data.filename;
+        metaPages.textContent = `${data.total_pages} sections`;
+        metaChunks.textContent = `${data.total_chunks} chunks`;
+
+        ingestLoader.classList.add('hidden');
+        docMetaStrip.classList.remove('hidden');
+
+        if (composerInput) {
+          composerInput.disabled = false;
+          composerInput.placeholder = `Ask any question about ${data.filename}...`;
+          composerInput.focus();
+        }
+        if (composerSend) composerSend.disabled = false;
+        if (starterChips) starterChips.classList.remove('hidden');
+        if (emptyState) emptyState.classList.add('hidden');
+
+        updateSmartStarterChips(data.filename);
+        updateHistoryBadge();
+
+        appendNotice(`**Switched active document to "${data.filename}"** (${data.total_pages} sections ready).`);
+        return true;
+      }
+
+      // 2. If server restarted, silently re-index from IndexedDB cache
+      const cachedBlob = await DocStore.getFile(filename);
+      if (cachedBlob) {
+        const file = new File([cachedBlob], filename, { type: cachedBlob.type || 'application/octet-stream' });
+        await ingestPdfFile(file);
+        return true;
+      }
+
+      // 3. If sample PDF
+      if (filename === 'sample_project_orion.pdf') {
+        await loadSampleBtn.click();
+        return true;
+      }
+
+      // 4. If not available in storage, prompt file picker gracefully
+      ingestLoader.classList.add('hidden');
+      if (currentDossier) {
+        docMetaStrip.classList.remove('hidden');
+      } else {
+        dropzone.classList.remove('hidden');
+      }
+      appendNotice(`Could not restore "${filename}". Please select the file to reload.`);
+      fileInput.click();
+      return false;
+
+    } catch (err) {
+      console.error('Switch error:', err);
+      ingestLoader.classList.add('hidden');
+      if (currentDossier) docMetaStrip.classList.remove('hidden');
+      appendNotice(`**Switch Notice:** ${err.message}`);
+      return false;
+    }
   }
 
   function renderHistoryModal() {
@@ -861,20 +1003,19 @@ document.addEventListener('DOMContentLoaded', () => {
       const switchBtn = item.querySelector('.btn-history-load');
       if (switchBtn) {
         switchBtn.addEventListener('click', async () => {
-          if (doc.filename === 'sample_project_orion.pdf') {
-            loadSampleBtn.click();
-          } else {
-            alert(`"${doc.filename}" was previously processed. Please select the file to reload its vectors.`);
-            fileInput.click();
-          }
           historyModal.classList.add('hidden');
+          await switchDocument(doc.filename);
         });
       }
 
       const delBtn = item.querySelector('.btn-history-delete');
       if (delBtn) {
-        delBtn.addEventListener('click', (e) => {
+        delBtn.addEventListener('click', async (e) => {
           e.stopPropagation();
+          await DocStore.deleteFile(doc.filename);
+          try {
+            await fetch(`/document/delete?filename=${encodeURIComponent(doc.filename)}`, { method: 'DELETE' });
+          } catch (e) {}
           const updated = getDocHistory().filter((_, i) => i !== idx);
           localStorage.setItem('veritas_doc_history', JSON.stringify(updated));
           updateHistoryBadge();

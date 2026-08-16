@@ -151,6 +151,33 @@ async def get_document_dossier():
     return pipeline.get_document_dossier()
 
 
+@app.get("/document/list", tags=["RAG"])
+async def list_documents():
+    """Returns all documents cached in active session memory."""
+    return {"documents": pipeline.list_documents()}
+
+
+@app.post("/document/switch", tags=["RAG"])
+async def switch_document(filename: str = Query(..., description="The filename to switch to")):
+    """Switches active vector index and document context in memory instantly."""
+    success = pipeline.switch_document(filename)
+    if not success:
+        raise HTTPException(status_code=404, detail=f"Document '{filename}' not found in active session cache.")
+    return {
+        "status": "switched",
+        "filename": pipeline.current_filename,
+        "total_pages": pipeline.total_pages,
+        "total_chunks": len(pipeline.chunks),
+    }
+
+
+@app.delete("/document/delete", tags=["RAG"])
+async def delete_document(filename: str = Query(..., description="The filename to delete")):
+    """Removes a document from session cache."""
+    success = pipeline.delete_document(filename)
+    return {"status": "deleted" if success else "not_found", "filename": filename}
+
+
 @app.get("/sample-pdf", tags=["RAG"])
 async def get_sample_pdf():
     """Returns a generated 3-page sample PDF for instant 1-click testing."""

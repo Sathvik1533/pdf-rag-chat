@@ -154,7 +154,8 @@ class RAGPipeline:
         self.embedding_dim = 384  # standard for all-MiniLM-L6-v2
         self._embedder = None
 
-        # In-memory document storage state (scoped to the uploaded document)
+        # In-memory document storage state (multi-document library)
+        self.documents: Dict[str, Dict[str, Any]] = {}
         self.index: Optional[faiss.IndexFlatIP] = None
         self.chunks: List[DocumentChunk] = []
         self.pages_text: List[Tuple[int, str, str]] = []  # (index, label, text)
@@ -267,12 +268,31 @@ class RAGPipeline:
 
         elapsed_ms = (time.time() - start_t) * 1000.0
 
-        # Update in-memory state
+        # Update active in-memory state
         self.index = index
         self.chunks = chunks
         self.pages_text = pages_text
+        self.current_filename = filename
         self.document_size_bytes = len(file_bytes)
         self.last_indexing_time_ms = elapsed_ms
+
+        # Store in multi-document library cache (keep up to 15 recent files in memory, <10MB total)
+        self.documents[filename] = {
+            "index": index,
+            "chunks": chunks,
+            "pages_text": pages_text,
+            "filename": filename,
+            "total_pages": self.total_pages,
+            "total_chunks": len(chunks),
+            "document_size_bytes": len(file_bytes),
+            "last_indexing_time_ms": elapsed_ms
+        }
+
+        # Keep cache bounded to 15 items
+        if len(self.documents) > 15:
+            oldest_key = next(iter(self.documents))
+            if oldest_key != filename:
+                del self.documents[oldest_key]
 
         import gc
         gc.collect()
@@ -287,6 +307,55 @@ class RAGPipeline:
             "indexing_time_ms": round(elapsed_ms, 1),
             "status": "ready"
         }
+
+    def switch_document(self, filename: str) -> bool:
+        """
+        Switch active document in memory in 0.1ms without re-indexing.
+        """
+        if filename in self.documents:
+            doc = self.documents[filename]
+            self.index = doc["index"]
+            self.chunks = doc["chunks"]
+            self.pages_text = doc["pages_text"]
+            self.current_filename = doc["filename"]
+            self.total_pages = doc["total_pages"]
+            self.document_size_bytes = doc["document_size_bytes"]
+            self.last_indexing_time_ms = doc["last_indexing_time_ms"]
+            logger.info(f"Switched active document to '{filename}' ({self.total_pages} sections, {len(self.chunks)} chunks)")
+            return True
+        return False
+
+    def list_documents(self) -> List[Dict[str, Any]]:
+        """Return metadata for all cached documents in session memory."""
+        return [
+            {
+                "filename": doc["filename"],
+                "total_pages": doc["total_pages"],
+                "total_chunks": doc["total_chunks"],
+                "document_size_bytes": doc["document_size_bytes"],
+                "is_active": doc["filename"] == self.current_filename
+            }
+            for doc in self.documents.values()
+        ]
+
+    def delete_document(self, filename: str) -> bool:
+        """Remove a document from session memory."""
+        if filename in self.documents:
+            del self.documents[filename]
+            if self.current_filename == filename:
+                if self.documents:
+                    # Switch to another available doc
+                    next_name = next(iter(self.documents))
+                    self.switch_document(next_name)
+                else:
+                    self.index = None
+                    self.chunks = []
+                    self.pages_text = []
+                    self.current_filename = None
+                    self.total_pages = 0
+                    self.document_size_bytes = 0
+            return True
+        return False
 
     def get_document_dossier(self) -> Dict[str, Any]:
         """Returns the full extracted document pages and indexed chunks for the live document reader."""
