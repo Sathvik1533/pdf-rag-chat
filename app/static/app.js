@@ -673,23 +673,29 @@ document.addEventListener('DOMContentLoaded', () => {
       ];
     }
 
-    // Label
-    const label = document.createElement('span');
-    label.className = 'starter-label';
-    label.innerHTML = `
-      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path>
-      </svg>
-      <span>Suggested:</span>
+    // Header with Title & Hint
+    const header = document.createElement('div');
+    header.className = 'starter-chips-header';
+    header.innerHTML = `
+      <div class="starter-chips-title">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+        </svg>
+        <span>Suggested Questions for this Document</span>
+      </div>
+      <span class="starter-chips-hint">Click any prompt to ask instantly</span>
     `;
-    starterChips.appendChild(label);
+    starterChips.appendChild(header);
+
+    const grid = document.createElement('div');
+    grid.className = 'starter-chips-grid';
 
     prompts.forEach(p => {
       const chip = document.createElement('button');
       chip.type = 'button';
       chip.className = 'starter-chip-btn';
       chip.innerHTML = `
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
         </svg>
         <span>${escapeHtml(p)}</span>
@@ -698,8 +704,9 @@ document.addEventListener('DOMContentLoaded', () => {
         composerInput.value = p;
         composerForm.dispatchEvent(new Event('submit'));
       });
-      starterChips.appendChild(chip);
+      grid.appendChild(chip);
     });
+    starterChips.appendChild(grid);
   }
 
   // --------------------------------------------------------------------------
