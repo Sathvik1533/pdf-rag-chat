@@ -2119,6 +2119,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const row = document.createElement('div');
     row.className = 'msg-row msg-user';
 
+    // Track index in conversationHistory for this message
+    const histIdx = conversationHistory.length; // will be pushed at this index if shouldSave
+    row.dataset.historyIndex = histIdx;
+
     const senderTag = document.createElement('div');
     senderTag.className = 'msg-sender-tag';
     senderTag.textContent = 'Your Question';
@@ -2127,6 +2131,92 @@ document.addEventListener('DOMContentLoaded', () => {
     bubble.className = 'msg-bubble';
     bubble.textContent = text;
 
+    // ── Hover action bar (Edit + Delete) ─────────────────────────────────────
+    const hoverActions = document.createElement('div');
+    hoverActions.className = 'msg-hover-actions';
+
+    // Edit button — puts text back in composer, removes this Q&A pair
+    const editBtn = document.createElement('button');
+    editBtn.className = 'msg-action-btn';
+    editBtn.title = 'Edit & resend';
+    editBtn.innerHTML = `
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
+        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
+      </svg>
+      <span>Edit</span>
+    `;
+    editBtn.addEventListener('click', () => {
+      // Find this row's position among all msg-rows in DOM
+      const allRows = Array.from(chatThread.querySelectorAll('.msg-row'));
+      const rowIdx = allRows.indexOf(row);
+
+      // Remove this user row and the immediately following assistant row (if any)
+      const nextRow = allRows[rowIdx + 1];
+      if (nextRow && nextRow.classList.contains('msg-assistant')) {
+        nextRow.remove();
+      }
+      row.remove();
+
+      // Remove from conversationHistory: find by text match (most reliable)
+      const uIdx = conversationHistory.findIndex(m => m.role === 'user' && m.text === text);
+      if (uIdx !== -1) {
+        // Remove the user message and the following assistant message if present
+        const removeCount = (conversationHistory[uIdx + 1] && conversationHistory[uIdx + 1].role === 'assistant') ? 2 : 1;
+        conversationHistory.splice(uIdx, removeCount);
+        saveChatThread();
+      }
+
+      // Put text back into composer
+      if (composerInput) {
+        composerInput.value = text;
+        composerInput.focus();
+        composerInput.style.height = 'auto';
+        composerInput.style.height = Math.min(composerInput.scrollHeight, 140) + 'px';
+      }
+
+      // Show empty state if no messages left
+      if (chatThread && chatThread.querySelectorAll('.msg-row').length === 0) {
+        chatThread.classList.add('hidden');
+        if (emptyState) emptyState.classList.remove('hidden');
+      }
+    });
+
+    // Delete button — removes this Q&A pair entirely
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'msg-action-btn msg-action-btn-danger';
+    deleteBtn.title = 'Delete this message';
+    deleteBtn.innerHTML = `
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="3 6 5 6 21 6"></polyline>
+        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+      </svg>
+      <span>Delete</span>
+    `;
+    deleteBtn.addEventListener('click', () => {
+      const allRows = Array.from(chatThread.querySelectorAll('.msg-row'));
+      const rowIdx = allRows.indexOf(row);
+      const nextRow = allRows[rowIdx + 1];
+      if (nextRow && nextRow.classList.contains('msg-assistant')) nextRow.remove();
+      row.remove();
+
+      const uIdx = conversationHistory.findIndex(m => m.role === 'user' && m.text === text);
+      if (uIdx !== -1) {
+        const removeCount = (conversationHistory[uIdx + 1] && conversationHistory[uIdx + 1].role === 'assistant') ? 2 : 1;
+        conversationHistory.splice(uIdx, removeCount);
+        saveChatThread();
+      }
+
+      if (chatThread && chatThread.querySelectorAll('.msg-row').length === 0) {
+        chatThread.classList.add('hidden');
+        if (emptyState) emptyState.classList.remove('hidden');
+      }
+    });
+
+    hoverActions.appendChild(editBtn);
+    hoverActions.appendChild(deleteBtn);
+
+    row.appendChild(hoverActions);
     row.appendChild(senderTag);
     row.appendChild(bubble);
     chatThread.appendChild(row);
@@ -2265,6 +2355,46 @@ document.addEventListener('DOMContentLoaded', () => {
 
     actions.appendChild(speakBtn);
     actions.appendChild(copyBtn);
+
+    // Delete button — removes this assistant bubble and the preceding user bubble
+    const delAnswerBtn = document.createElement('button');
+    delAnswerBtn.className = 'copy-btn msg-action-btn-danger-soft';
+    delAnswerBtn.title = 'Delete this Q&A pair';
+    delAnswerBtn.innerHTML = `
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="3 6 5 6 21 6"></polyline>
+        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+      </svg>
+      <span>Delete</span>
+    `;
+    delAnswerBtn.addEventListener('click', () => {
+      const allRows = Array.from(chatThread.querySelectorAll('.msg-row'));
+      const rowIdx = allRows.indexOf(row);
+      // Remove preceding user bubble too
+      const prevRow = allRows[rowIdx - 1];
+      if (prevRow && prevRow.classList.contains('msg-user')) {
+        const userText = prevRow.querySelector('.msg-bubble') ? prevRow.querySelector('.msg-bubble').textContent : null;
+        prevRow.remove();
+        if (userText) {
+          const uIdx = conversationHistory.findIndex(m => m.role === 'user' && m.text === userText);
+          if (uIdx !== -1) {
+            const removeCount = (conversationHistory[uIdx + 1] && conversationHistory[uIdx + 1].role === 'assistant') ? 2 : 1;
+            conversationHistory.splice(uIdx, removeCount);
+          }
+        }
+      } else {
+        // Just remove this assistant message from history
+        const aIdx = conversationHistory.findIndex(m => m.role === 'assistant' && m.data && m.data.answer === data.answer);
+        if (aIdx !== -1) conversationHistory.splice(aIdx, 1);
+      }
+      row.remove();
+      saveChatThread();
+      if (chatThread && chatThread.querySelectorAll('.msg-row').length === 0) {
+        chatThread.classList.add('hidden');
+        if (emptyState) emptyState.classList.remove('hidden');
+      }
+    });
+    actions.appendChild(delAnswerBtn);
     bubble.appendChild(actions);
 
     row.appendChild(senderTag);

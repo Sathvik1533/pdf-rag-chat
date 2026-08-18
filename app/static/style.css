@@ -933,6 +933,76 @@ body.theme-dark .msg-user .msg-bubble {
   color: var(--brand);
 }
 
+/* ── Per-Message Hover Actions (Edit / Delete) ──────────────────────────── */
+.msg-row {
+  position: relative;
+}
+
+.msg-hover-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.15s ease, visibility 0.15s ease;
+  position: absolute;
+  /* Sits to the LEFT of the user bubble */
+  right: calc(100% - 1rem);
+  top: 50%;
+  transform: translateY(-50%);
+  background: var(--bg-card);
+  border: 1px solid var(--border-precision);
+  border-radius: var(--r-sm);
+  padding: 0.28rem 0.4rem;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  white-space: nowrap;
+  z-index: 10;
+}
+
+.msg-row.msg-user:hover .msg-hover-actions {
+  opacity: 1;
+  visibility: visible;
+}
+
+.msg-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 0.71rem;
+  font-weight: 600;
+  font-family: var(--font-display);
+  padding: 0.22rem 0.45rem;
+  border-radius: var(--r-xs);
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.msg-action-btn:hover {
+  background: var(--bg-card-subtle);
+  color: var(--text-main);
+}
+
+.msg-action-btn-danger {
+  color: var(--refusal-crimson);
+}
+
+.msg-action-btn-danger:hover {
+  background: var(--refusal-bg);
+  color: var(--refusal-crimson);
+}
+
+/* Soft danger variant used on the assistant action bar Delete button */
+.msg-action-btn-danger-soft:hover {
+  color: var(--refusal-crimson) !important;
+  border-color: var(--refusal-border) !important;
+  background: var(--refusal-bg) !important;
+}
+
+
+
 /* Audio Waveform Animation */
 .audio-waveform-bars {
   display: inline-flex;
