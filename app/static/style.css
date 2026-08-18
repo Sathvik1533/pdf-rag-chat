@@ -644,12 +644,15 @@ body.theme-dark .brand-mark {
   max-width: 960px;
   width: 100%;
   margin: 0 auto;
-  padding: 1rem 1.5rem;
+  padding: 0.75rem 1.5rem 0.5rem 1.5rem;
+  overflow: hidden;
+  box-sizing: border-box;
 }
 
 .chat-thread {
   flex: 1;
   overflow-y: auto;
+  min-height: 0;
   padding-right: 0.5rem;
   display: flex;
   flex-direction: column;
@@ -663,10 +666,11 @@ body.theme-dark .brand-mark {
   align-items: center;
   justify-content: center;
   text-align: center;
-  height: 100%;
-  min-height: 380px;
-  padding: 2rem 1rem;
+  flex: 1;
+  min-height: 0;
+  padding: 1rem 1rem;
   margin: auto;
+  overflow-y: auto;
 }
 
 .empty-dossier-icon {
@@ -1247,9 +1251,43 @@ body.theme-dark .chip:hover {
 }
 
 
+/* Live Voice Recording Pill */
+.voice-recording-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: var(--refusal-bg);
+  border: 1px solid var(--refusal-border);
+  color: var(--refusal-crimson);
+  font-family: var(--font-display);
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 0.28rem 0.75rem;
+  border-radius: var(--r-full);
+  margin-bottom: 0.4rem;
+  width: fit-content;
+  box-shadow: 0 2px 6px rgba(220, 38, 38, 0.1);
+  animation: fadeIn 0.2s ease;
+}
+
+.voice-recording-dot {
+  width: 8px;
+  height: 8px;
+  background: var(--refusal-crimson);
+  border-radius: 50%;
+  animation: pulseRecording 0.9s infinite alternate;
+}
+
+@keyframes pulseRecording {
+  from { transform: scale(0.8); opacity: 0.4; }
+  to { transform: scale(1.25); opacity: 1; }
+}
+
 /* Prompt Composer */
 .composer-container {
-  padding-top: 0.5rem;
+  margin-top: auto;
+  flex-shrink: 0;
+  padding-top: 0.4rem;
 }
 
 .composer-form {
