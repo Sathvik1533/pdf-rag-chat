@@ -2025,6 +2025,32 @@ document.addEventListener('DOMContentLoaded', () => {
     appendLoadingBubble(loaderId);
 
     try {
+      // ── Auto-Recovery: if frontend has an active doc but backend lost it
+      //    (e.g. server restart on Render), silently re-upload from IndexedDB
+      //    before sending the chat request so the user never sees an ugly error.
+      if (activeDocumentInfo && activeDocumentInfo.filename) {
+        const probeRes = await apiFetch('/status');
+        if (probeRes.ok) {
+          const probeData = await probeRes.json();
+          if (!probeData.indexed) {
+            // Backend has no doc — try to restore from IndexedDB cache
+            const loaderTextEl = document.getElementById('ingest-loader-text');
+            if (loaderTextEl) loaderTextEl.textContent = `Reconnecting to "${activeDocumentInfo.filename}"…`;
+            const cachedBlob = await DocStore.getFile(activeDocumentInfo.filename);
+            if (cachedBlob) {
+              const file = new File([cachedBlob], activeDocumentInfo.filename, {
+                type: cachedBlob.type || 'application/octet-stream'
+              });
+              await ingestPdfFile(file);
+            } else if (activeDocumentInfo.filename === 'sample_project_orion.pdf') {
+              // Re-trigger sample load silently
+              if (loadSampleBtn) loadSampleBtn.click();
+              await new Promise(r => setTimeout(r, 3000));
+            }
+          }
+        }
+      }
+
       const payload = {
         question: query,
         groq_api_key: cfgGroqKey.value.trim() || undefined,
@@ -2048,7 +2074,12 @@ document.addEventListener('DOMContentLoaded', () => {
       removeLoadingBubble(loaderId);
 
       if (!response.ok) {
-        appendNotice(`❌ **Notice:** ${data.detail || 'Could not generate answer.'}`);
+        // If still no document after recovery attempt, prompt the user gracefully
+        if (response.status === 400 && data.detail && data.detail.includes('upload')) {
+          appendNotice(`📂 **No document loaded.** Please upload a file using the dropzone on the left, or pick one from **Saved Files**.`);
+        } else {
+          appendNotice(`❌ **Notice:** ${data.detail || 'Could not generate answer.'}`);
+        }
         return;
       }
 
