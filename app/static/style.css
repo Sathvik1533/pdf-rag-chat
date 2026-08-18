@@ -721,7 +721,16 @@ body.theme-dark .brand-mark {
 
 .msg-user {
   align-items: flex-end;
+  /* Switch inner layout to row so action icons sit beside the bubble */
+  flex-direction: row;
+  justify-content: flex-end;
 }
+
+/* Sender tag stays above bubble — override for user rows */
+.msg-user .msg-sender-tag {
+  display: none; /* label already implied by right-alignment */
+}
+
 
 .msg-user .msg-bubble {
   background: var(--ink-base);
@@ -934,29 +943,20 @@ body.theme-dark .msg-user .msg-bubble {
 }
 
 /* ── Per-Message Hover Actions (Edit / Delete) ──────────────────────────── */
-.msg-row {
-  position: relative;
-}
+
+/* msg-row already has position: relative from base rule */
 
 .msg-hover-actions {
   display: flex;
   align-items: center;
-  gap: 0.3rem;
+  gap: 0.25rem;
   opacity: 0;
   visibility: hidden;
   transition: opacity 0.15s ease, visibility 0.15s ease;
-  position: absolute;
-  /* Sits to the LEFT of the user bubble */
-  right: calc(100% - 1rem);
-  top: 50%;
-  transform: translateY(-50%);
-  background: var(--bg-card);
-  border: 1px solid var(--border-precision);
-  border-radius: var(--r-sm);
-  padding: 0.28rem 0.4rem;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-  white-space: nowrap;
-  z-index: 10;
+  /* Sits in normal flow to the LEFT of the bubble */
+  align-self: center;
+  margin-right: 0.5rem;
+  flex-shrink: 0;
 }
 
 .msg-row.msg-user:hover .msg-hover-actions {
@@ -967,39 +967,112 @@ body.theme-dark .msg-user .msg-bubble {
 .msg-action-btn {
   display: inline-flex;
   align-items: center;
-  gap: 0.3rem;
-  background: transparent;
-  border: none;
+  justify-content: center;
+  gap: 0.25rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-precision);
   color: var(--text-muted);
-  font-size: 0.71rem;
+  font-size: 0.7rem;
   font-weight: 600;
   font-family: var(--font-display);
-  padding: 0.22rem 0.45rem;
+  padding: 0.28rem 0.55rem;
   border-radius: var(--r-xs);
   cursor: pointer;
   transition: all 0.12s ease;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.07);
+  white-space: nowrap;
 }
 
 .msg-action-btn:hover {
   background: var(--bg-card-subtle);
   color: var(--text-main);
+  border-color: var(--border-medium);
 }
 
 .msg-action-btn-danger {
   color: var(--refusal-crimson);
 }
 
-.msg-action-btn-danger:hover {
+.msg-action-btn.msg-action-btn-danger:hover {
   background: var(--refusal-bg);
   color: var(--refusal-crimson);
+  border-color: var(--refusal-border);
 }
 
-/* Soft danger variant used on the assistant action bar Delete button */
+/* Soft danger variant on assistant action bar */
 .msg-action-btn-danger-soft:hover {
   color: var(--refusal-crimson) !important;
   border-color: var(--refusal-border) !important;
   background: var(--refusal-bg) !important;
 }
+
+/* Inline edit mode — bubble becomes a textarea */
+.msg-bubble-edit-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: 80%;
+}
+
+.msg-bubble-textarea {
+  background: var(--ink-base);
+  color: var(--text-inverted);
+  border: 2px solid var(--brand);
+  border-radius: var(--r-md) var(--r-md) var(--r-xs) var(--r-md);
+  padding: 0.75rem 1.15rem;
+  font-size: 0.875rem;
+  font-family: var(--font-body);
+  line-height: 1.5;
+  width: 100%;
+  min-width: 260px;
+  resize: none;
+  outline: none;
+}
+
+body.theme-dark .msg-bubble-textarea {
+  background: var(--bg-card-subtle);
+  color: var(--text-main);
+}
+
+.msg-edit-controls {
+  display: flex;
+  gap: 0.4rem;
+  justify-content: flex-end;
+}
+
+.btn-edit-save {
+  background: var(--ink-base);
+  color: var(--text-inverted);
+  border: none;
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.35rem 0.8rem;
+  border-radius: var(--r-xs);
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.btn-edit-save:hover { background: var(--brand); }
+
+.btn-edit-cancel {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border-precision);
+  font-family: var(--font-display);
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.35rem 0.8rem;
+  border-radius: var(--r-xs);
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.btn-edit-cancel:hover {
+  background: var(--bg-card-subtle);
+  color: var(--text-main);
+}
+
 
 
 

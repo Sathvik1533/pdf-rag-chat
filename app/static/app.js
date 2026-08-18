@@ -2135,7 +2135,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const hoverActions = document.createElement('div');
     hoverActions.className = 'msg-hover-actions';
 
-    // Edit button — puts text back in composer, removes this Q&A pair
+    // Edit button — transforms bubble into inline textarea (ChatGPT style)
     const editBtn = document.createElement('button');
     editBtn.className = 'msg-action-btn';
     editBtn.title = 'Edit & resend';
@@ -2147,39 +2147,72 @@ document.addEventListener('DOMContentLoaded', () => {
       <span>Edit</span>
     `;
     editBtn.addEventListener('click', () => {
-      // Find this row's position among all msg-rows in DOM
-      const allRows = Array.from(chatThread.querySelectorAll('.msg-row'));
-      const rowIdx = allRows.indexOf(row);
+      // Replace the bubble with an inline textarea
+      const editWrap = document.createElement('div');
+      editWrap.className = 'msg-bubble-edit-wrap';
 
-      // Remove this user row and the immediately following assistant row (if any)
-      const nextRow = allRows[rowIdx + 1];
-      if (nextRow && nextRow.classList.contains('msg-assistant')) {
-        nextRow.remove();
-      }
-      row.remove();
+      const textarea = document.createElement('textarea');
+      textarea.className = 'msg-bubble-textarea';
+      textarea.value = text;
+      textarea.rows = Math.max(2, Math.ceil(text.length / 60));
+      editWrap.appendChild(textarea);
 
-      // Remove from conversationHistory: find by text match (most reliable)
-      const uIdx = conversationHistory.findIndex(m => m.role === 'user' && m.text === text);
-      if (uIdx !== -1) {
-        // Remove the user message and the following assistant message if present
-        const removeCount = (conversationHistory[uIdx + 1] && conversationHistory[uIdx + 1].role === 'assistant') ? 2 : 1;
-        conversationHistory.splice(uIdx, removeCount);
-        saveChatThread();
-      }
+      const controls = document.createElement('div');
+      controls.className = 'msg-edit-controls';
 
-      // Put text back into composer
-      if (composerInput) {
-        composerInput.value = text;
-        composerInput.focus();
-        composerInput.style.height = 'auto';
-        composerInput.style.height = Math.min(composerInput.scrollHeight, 140) + 'px';
-      }
+      const saveBtn = document.createElement('button');
+      saveBtn.className = 'btn-edit-save';
+      saveBtn.textContent = 'Save & Send';
 
-      // Show empty state if no messages left
-      if (chatThread && chatThread.querySelectorAll('.msg-row').length === 0) {
-        chatThread.classList.add('hidden');
-        if (emptyState) emptyState.classList.remove('hidden');
-      }
+      const cancelBtn = document.createElement('button');
+      cancelBtn.className = 'btn-edit-cancel';
+      cancelBtn.textContent = 'Cancel';
+
+      controls.appendChild(cancelBtn);
+      controls.appendChild(saveBtn);
+      editWrap.appendChild(controls);
+
+      // Swap bubble for editWrap
+      bubble.replaceWith(editWrap);
+      hoverActions.style.opacity = '0';
+      hoverActions.style.visibility = 'hidden';
+      textarea.focus();
+      textarea.setSelectionRange(textarea.value.length, textarea.value.length);
+
+      // Cancel — restore original bubble
+      cancelBtn.addEventListener('click', () => {
+        editWrap.replaceWith(bubble);
+        hoverActions.style.opacity = '';
+        hoverActions.style.visibility = '';
+      });
+
+      // Save — remove Q&A pair, re-submit the edited text
+      saveBtn.addEventListener('click', () => {
+        const newText = textarea.value.trim();
+        if (!newText) return;
+
+        // Remove following assistant row from DOM
+        const allRows = Array.from(chatThread.querySelectorAll('.msg-row'));
+        const rowIdx = allRows.indexOf(row);
+        const nextRow = allRows[rowIdx + 1];
+        if (nextRow && nextRow.classList.contains('msg-assistant')) nextRow.remove();
+
+        // Remove from conversationHistory
+        const uIdx = conversationHistory.findIndex(m => m.role === 'user' && m.text === text);
+        if (uIdx !== -1) {
+          const removeCount = (conversationHistory[uIdx + 1] && conversationHistory[uIdx + 1].role === 'assistant') ? 2 : 1;
+          conversationHistory.splice(uIdx, removeCount);
+        }
+
+        // Remove this row (will be re-added by submit)
+        row.remove();
+
+        // Submit the new text as a fresh query
+        if (composerInput) {
+          composerInput.value = newText;
+          composerForm.dispatchEvent(new Event('submit'));
+        }
+      });
     });
 
     // Delete button — removes this Q&A pair entirely
