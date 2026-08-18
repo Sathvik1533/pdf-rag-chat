@@ -673,11 +673,27 @@ document.addEventListener('DOMContentLoaded', () => {
       ];
     }
 
+    // Label
+    const label = document.createElement('span');
+    label.className = 'starter-label';
+    label.innerHTML = `
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"></path>
+      </svg>
+      <span>Suggested:</span>
+    `;
+    starterChips.appendChild(label);
+
     prompts.forEach(p => {
       const chip = document.createElement('button');
       chip.type = 'button';
       chip.className = 'starter-chip-btn';
-      chip.textContent = p;
+      chip.innerHTML = `
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+        </svg>
+        <span>${escapeHtml(p)}</span>
+      `;
       chip.addEventListener('click', () => {
         composerInput.value = p;
         composerForm.dispatchEvent(new Event('submit'));
