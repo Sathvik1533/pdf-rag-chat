@@ -48,12 +48,15 @@ Engineered with an ultra-lightweight memory footprint (<10MB RAM per session), V
 2. **💾 Disk-Backed Vector Persistence**: Guarantees zero data loss across container restarts or cloud sleep cycles. FAISS index binaries and chunk catalogs are automatically serialized to `./data/storage` and restored in `<6ms`.
 3. **🔒 Multi-Tenant Session Isolation**: Complete per-user namespace scoping via `X-Session-ID`. User A and User B maintain completely decoupled document libraries with zero vector overlap or cross-talk.
 4. **🚦 Sliding-Window Rate Limiting & 15MB Size Firewall**: Protects `/upload` (20 req/min) and `/chat` (45 req/min) against quota exhaustion with HTTP 429 throttling and enforces a strict 15MB upload ceiling (HTTP 413).
-5. **⚡ Circuit Breaker & Exponential Backoff LLM Engine**: Groq LLaMA 3.3 70B synthesis with 3-tier exponential retry (0.5s, 1.2s, 2.5s). If upstream APIs experience outages or rate limits, the circuit breaker automatically serves a verified **Grounded Extractive Summary** directly from indexed chunks.
+5. **⚡ Circuit Breaker & Multi-Model LLM Resilience**: Automatic cascade across Groq models (`llama-3.3-70b-versatile` → `llama-3.1-8b-instant` → `llama3-70b-8192`) with 3-tier exponential retry. If APIs fail, falls back cleanly to verified extractive synthesis with zero debug error leaks.
 6. **📄 Universal 9-Format Ingestion**: Ingests **PDF, Word (.docx), PowerPoint (.pptx), Excel (.xlsx), CSV, TSV, JSON, YAML, Source Code (.py, .js, .ts, .sql), Markdown, and Plain Text** with automatic magic-byte sniffing.
 7. **🕸️ Interactive 2D Neural Knowledge Graph**: Automatically maps document semantic clusters and entity relationships into a dynamic, physics-simulated canvas with 1-click Document Reader jumping.
-8. **🎙️ Speech & Audio Intelligence Engine (Muted-Recording Verified)**: 
-   - **Live Voice Dictation**: Real-time speech-to-text typing feedback (`interimResults: true`) with animated recording beacon.
-   - **Resilient Neural TTS**: Web Speech API read-aloud featuring a **4-bar animated equalizer waveform**, **synchronized on-screen live subtitles (`.tts-live-caption-bar`)**, sentence boundary highlights, 30s safety watchdog timer, and tab-switch backgrounding recovery.
+8. **🎙️ Bidirectional Speech & Audio Intelligence**: 
+   - **Live Voice Dictation**: Real-time microphone speech-to-text with continuous transcript streaming and fixed-bottom composer viewport anchoring.
+   - **Resilient Neural TTS**: Web Speech API read-aloud featuring a **4-bar animated equalizer waveform**, **synchronized on-screen live subtitles (`.tts-live-caption-bar`)**, and sentence boundary highlights.
+9. **🗃️ Automatic Chat Session History & Restore**: Clicking *Clear Messages* or *New Chat* automatically snapshots and archives the conversation in localStorage (up to 30 sessions). Users can browse past sessions and open a full-fidelity read-only restore viewer.
+10. **✏️ Inline Message Editing & Deletion**: ChatGPT-style in-place prompt editing (bubble transforms into textarea with Save/Cancel) and atomic Q&A deletion with synchronized thread history.
+11. **🔄 Browser-to-Backend State Reconciliation**: Probes backend RAM state before every query; if server container slept, automatically re-hydrates FAISS index from browser IndexedDB cache.
 
 ---
 
@@ -334,6 +337,12 @@ Deploy Veritas instantly to [Render](https://render.com) using the included `ren
 
 ---
 
+## 🤝 Mentorship & Acknowledgements
+
+Special gratitude to our mentors **[Akhil Kvk](https://linkedin.com)** and **[Dhanush G.](https://linkedin.com)** for instilling an uncompromising product-first mindset: pushing us beyond basic tutorial assignments to architect resilient, zero-hallucination, enterprise-grade AI systems with real production rigor.
+
+---
+
 ## 📜 License
 
 Distributed under the **MIT License**. See [`LICENSE`](LICENSE) for more information.
@@ -341,5 +350,6 @@ Distributed under the **MIT License**. See [`LICENSE`](LICENSE) for more informa
 ---
 
 <div align="center">
-<b>Crafted with ❤️ by <a href="https://github.com/Sathvik1533">Sathvik1533</a></b>
+<b>Crafted with precision by <a href="https://github.com/Sathvik1533">Sathvik1533</a></b>
 </div>
+
