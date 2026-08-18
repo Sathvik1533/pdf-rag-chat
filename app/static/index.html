@@ -141,6 +141,66 @@
       </div>
     </div>
 
+    <!-- Chat Session History Modal -->
+    <div id="chat-history-modal" class="config-drawer hidden">
+      <div class="config-backdrop" id="chat-history-backdrop"></div>
+      <div class="drawer-inner drawer-wide">
+        <div class="drawer-header">
+          <div class="drawer-title-group">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            </svg>
+            <h3>Chat History</h3>
+          </div>
+          <button id="close-chat-history-btn" class="btn-modal-close" data-tooltip="Close" aria-label="Close">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <div class="drawer-body">
+          <p class="config-desc">Past conversations are auto-saved when you click <strong>Clear Messages</strong> or <strong>New Chat</strong>. Click Restore to view any session.</p>
+          <div id="chat-history-list" class="history-list">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chat Session Restore Viewer Modal -->
+    <div id="chat-restore-modal" class="config-drawer hidden">
+      <div class="config-backdrop" id="chat-restore-backdrop"></div>
+      <div class="drawer-inner drawer-wide">
+        <div class="drawer-header">
+          <div class="drawer-title-group">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="1 4 1 10 7 10"></polyline>
+              <path d="M3.51 15a9 9 0 1 0 .49-3.35"></path>
+            </svg>
+            <h3 id="restore-modal-title">Restored Session</h3>
+          </div>
+          <div style="display:flex;gap:0.5rem;align-items:center;">
+            <button id="back-to-chat-history-btn" class="btn btn-ghost btn-sm" style="font-size:0.75rem;">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"></polyline></svg>
+              Back
+            </button>
+            <button id="close-restore-modal-btn" class="btn-modal-close" data-tooltip="Close" aria-label="Close">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+              </svg>
+            </button>
+          </div>
+        </div>
+        <div class="drawer-body">
+          <div id="restore-modal-thread" class="restore-thread-container">
+            <!-- Rendered dynamically -->
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Export Studio Modal -->
     <div id="export-modal" class="config-drawer hidden">
       <div class="drawer-inner">
@@ -347,6 +407,14 @@
             </svg>
             <span>Saved Files</span>
             <span id="sidebar-history-count" class="badge-count hidden">0</span>
+          </button>
+
+          <button id="btn-sidebar-chat-history" class="sidebar-nav-item" data-tooltip="Browse archived chat sessions">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            </svg>
+            <span>Chat History</span>
+            <span id="chat-history-badge-count" class="badge-count hidden">0</span>
           </button>
         </nav>
 

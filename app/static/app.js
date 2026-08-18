@@ -1521,11 +1521,246 @@ document.addEventListener('DOMContentLoaded', () => {
   updateHistoryBadge();
 
   // --------------------------------------------------------------------------
+  // Chat Session Archive — auto-save conversations on Clear / New Chat
+  // --------------------------------------------------------------------------
+  function getChatSessions() {
+    try {
+      return JSON.parse(localStorage.getItem(`veritas_chat_sessions_${currentSessionId}`) || '[]');
+    } catch {
+      return [];
+    }
+  }
+
+  function archiveChatSession() {
+    if (!conversationHistory || conversationHistory.length === 0) return;
+    const sessions = getChatSessions();
+    const sessionEntry = {
+      id: `cs_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      docFilename: activeDocumentInfo ? activeDocumentInfo.filename : null,
+      docPages: activeDocumentInfo ? activeDocumentInfo.total_pages : null,
+      docChunks: activeDocumentInfo ? activeDocumentInfo.total_chunks : null,
+      timestamp: Date.now(),
+      messageCount: conversationHistory.length,
+      messages: conversationHistory.slice()
+    };
+    sessions.unshift(sessionEntry);
+    if (sessions.length > 30) sessions.pop(); // keep last 30 sessions
+    localStorage.setItem(`veritas_chat_sessions_${currentSessionId}`, JSON.stringify(sessions));
+    updateChatHistoryBadge();
+  }
+
+  function updateChatHistoryBadge() {
+    const sessions = getChatSessions();
+    const count = sessions.length;
+    ['chat-history-badge-count'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.textContent = count;
+        count > 0 ? el.classList.remove('hidden') : el.classList.add('hidden');
+      }
+    });
+  }
+  updateChatHistoryBadge();
+
+  function formatRelativeTime(ts) {
+    const diff = Date.now() - ts;
+    const m = Math.floor(diff / 60000);
+    const h = Math.floor(diff / 3600000);
+    const d = Math.floor(diff / 86400000);
+    if (m < 1) return 'Just now';
+    if (m < 60) return `${m}m ago`;
+    if (h < 24) return `${h}h ago`;
+    return `${d}d ago`;
+  }
+
+  const chatHistoryModal = document.getElementById('chat-history-modal');
+  const chatHistoryBackdrop = document.getElementById('chat-history-backdrop');
+  const chatHistoryList = document.getElementById('chat-history-list');
+  const closeChatHistoryBtn = document.getElementById('close-chat-history-btn');
+
+  const chatRestoreModal = document.getElementById('chat-restore-modal');
+  const chatRestoreBackdrop = document.getElementById('chat-restore-backdrop');
+  const restoreModalThread = document.getElementById('restore-modal-thread');
+  const restoreModalTitle = document.getElementById('restore-modal-title');
+  const closeRestoreModalBtn = document.getElementById('close-restore-modal-btn');
+  const backToChatHistoryBtn = document.getElementById('back-to-chat-history-btn');
+
+  function renderChatHistoryModal() {
+    if (!chatHistoryList) return;
+    const sessions = getChatSessions();
+
+    if (sessions.length === 0) {
+      chatHistoryList.innerHTML = `
+        <div style="text-align:center;padding:2rem 1rem;color:var(--text-muted);">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin-bottom:0.5rem;opacity:0.4;">
+            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+          </svg>
+          <p style="font-size:0.8rem;font-weight:600;">No saved chat sessions yet.</p>
+          <p style="font-size:0.72rem;margin-top:0.2rem;">When you click <strong>Clear Messages</strong> or <strong>New Chat</strong>, your conversation is automatically archived here.</p>
+        </div>
+      `;
+      return;
+    }
+
+    chatHistoryList.innerHTML = '';
+    sessions.forEach((session, idx) => {
+      const item = document.createElement('div');
+      item.className = 'chat-session-item';
+
+      const timeStr = formatRelativeTime(session.timestamp);
+      const docLabel = session.docFilename || 'No Document';
+      const msgCount = session.messageCount || session.messages.length;
+      // Get first user message as preview
+      const firstUserMsg = session.messages.find(m => m.role === 'user');
+      const preview = firstUserMsg ? firstUserMsg.text : '(No preview)';
+
+      item.innerHTML = `
+        <div class="chat-session-left">
+          <div class="chat-session-doc-badge">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+              <polyline points="14 2 14 8 20 8"></polyline>
+            </svg>
+            <span title="${escapeHtml(docLabel)}">${escapeHtml(docLabel.length > 28 ? docLabel.slice(0, 28) + '…' : docLabel)}</span>
+          </div>
+          <div class="chat-session-preview">"${escapeHtml(preview.length > 80 ? preview.slice(0, 80) + '…' : preview)}"</div>
+          <div class="chat-session-meta">${msgCount} message${msgCount !== 1 ? 's' : ''} &bull; ${timeStr}</div>
+        </div>
+        <div class="chat-session-actions">
+          <button class="btn-session-restore" data-idx="${idx}" title="View this conversation">Restore</button>
+          <button class="btn-session-delete" data-idx="${idx}" title="Delete this session">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="3 6 5 6 21 6"></polyline>
+              <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+            </svg>
+          </button>
+        </div>
+      `;
+
+      const restoreBtn = item.querySelector('.btn-session-restore');
+      restoreBtn.addEventListener('click', () => {
+        openRestoreViewer(session);
+      });
+
+      const deleteBtn = item.querySelector('.btn-session-delete');
+      deleteBtn.addEventListener('click', () => {
+        const updated = getChatSessions().filter((_, i) => i !== idx);
+        localStorage.setItem(`veritas_chat_sessions_${currentSessionId}`, JSON.stringify(updated));
+        updateChatHistoryBadge();
+        renderChatHistoryModal();
+      });
+
+      chatHistoryList.appendChild(item);
+    });
+  }
+
+  function openRestoreViewer(session) {
+    if (!restoreModalThread || !restoreModalTitle) return;
+
+    const docLabel = session.docFilename || 'No Document';
+    const dateStr = new Date(session.timestamp).toLocaleString();
+    restoreModalTitle.textContent = `${docLabel} — ${dateStr}`;
+
+    restoreModalThread.innerHTML = '';
+
+    if (!session.messages || session.messages.length === 0) {
+      restoreModalThread.innerHTML = '<p style="color:var(--text-muted);font-size:0.82rem;padding:1rem;">No messages in this session.</p>';
+    } else {
+      session.messages.forEach(msg => {
+        if (msg.role === 'user') {
+          const bubble = document.createElement('div');
+          bubble.className = 'restore-user-bubble';
+          bubble.innerHTML = `<span>${escapeHtml(msg.text)}</span>`;
+          restoreModalThread.appendChild(bubble);
+        } else if (msg.role === 'assistant' && msg.data) {
+          const wrapper = document.createElement('div');
+          wrapper.className = 'restore-assistant-bubble';
+
+          const badge = document.createElement('div');
+          if (msg.data.grounded) {
+            badge.className = 'grounding-audit-badge audit-grounded';
+            const simPct = ((msg.data.top_similarity || 0) * 100).toFixed(1);
+            badge.innerHTML = `<span class="badge-dot"></span> <strong>Grounded Proof</strong> &bull; ${simPct}% Match`;
+          } else {
+            badge.className = 'grounding-audit-badge audit-refusal';
+            badge.innerHTML = `<span class="badge-dot dot-refusal"></span> <strong>Refused &bull; Out of Document Scope</strong>`;
+          }
+          wrapper.appendChild(badge);
+
+          const body = document.createElement('div');
+          body.className = 'answer-body';
+          body.innerHTML = window.marked ? marked.parse(msg.data.answer) : escapeHtml(msg.data.answer);
+          wrapper.appendChild(body);
+
+          if (msg.data.grounded && msg.data.citations && msg.data.citations.length > 0) {
+            const citBlock = document.createElement('div');
+            citBlock.className = 'restore-citations';
+            msg.data.citations.forEach(c => {
+              const label = c.unit_label || `Page ${c.page}`;
+              const cit = document.createElement('div');
+              cit.className = 'restore-citation-chip';
+              cit.textContent = `${label} — "${c.excerpt.slice(0, 60)}…"`;
+              citBlock.appendChild(cit);
+            });
+            wrapper.appendChild(citBlock);
+          }
+
+          restoreModalThread.appendChild(wrapper);
+        }
+      });
+    }
+
+    if (chatHistoryModal) chatHistoryModal.classList.add('hidden');
+    if (chatRestoreModal) chatRestoreModal.classList.remove('hidden');
+  }
+
+  // Wire up Chat History modal
+  const btnSidebarChatHistory = document.getElementById('btn-sidebar-chat-history');
+  if (btnSidebarChatHistory) {
+    btnSidebarChatHistory.addEventListener('click', () => {
+      renderChatHistoryModal();
+      if (chatHistoryModal) chatHistoryModal.classList.remove('hidden');
+    });
+  }
+  if (closeChatHistoryBtn) {
+    closeChatHistoryBtn.addEventListener('click', () => {
+      if (chatHistoryModal) chatHistoryModal.classList.add('hidden');
+    });
+  }
+  if (chatHistoryBackdrop) {
+    chatHistoryBackdrop.addEventListener('click', () => {
+      if (chatHistoryModal) chatHistoryModal.classList.add('hidden');
+    });
+  }
+
+  // Wire up Restore Viewer modal
+  if (closeRestoreModalBtn) {
+    closeRestoreModalBtn.addEventListener('click', () => {
+      if (chatRestoreModal) chatRestoreModal.classList.add('hidden');
+    });
+  }
+  if (backToChatHistoryBtn) {
+    backToChatHistoryBtn.addEventListener('click', () => {
+      if (chatRestoreModal) chatRestoreModal.classList.add('hidden');
+      renderChatHistoryModal();
+      if (chatHistoryModal) chatHistoryModal.classList.remove('hidden');
+    });
+  }
+  if (chatRestoreBackdrop) {
+    chatRestoreBackdrop.addEventListener('click', () => {
+      if (chatRestoreModal) chatRestoreModal.classList.add('hidden');
+    });
+  }
+
+  // --------------------------------------------------------------------------
   // Action 1: Clear Messages Only (Keeps active document loaded)
   // --------------------------------------------------------------------------
   function clearVisibleMessagesOnly() {
     TTSController.stop();
     document.querySelectorAll('.passage-highlight').forEach(el => el.classList.remove('passage-highlight'));
+
+    // Archive current conversation before clearing
+    archiveChatSession();
 
     if (activeDocumentInfo && activeDocumentInfo.filename) {
       const key = getChatStorageKey(activeDocumentInfo.filename);
@@ -1575,6 +1810,9 @@ document.addEventListener('DOMContentLoaded', () => {
   function clearCurrentChatThread() {
     TTSController.stop();
     document.querySelectorAll('.passage-highlight').forEach(el => el.classList.remove('passage-highlight'));
+
+    // Archive current conversation before full reset
+    archiveChatSession();
 
     setWorkspaceActiveDocument(null);
 
