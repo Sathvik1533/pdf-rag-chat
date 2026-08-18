@@ -667,9 +667,9 @@ document.addEventListener('DOMContentLoaded', () => {
       ];
     } else {
       prompts = [
-        "What is the main objective of this document?",
-        "What are the key figures, budgets, and milestones?",
-        "Summarize the key takeaways and leadership team",
+        "What is the main topic and overview of this document?",
+        "Summarize the key points and findings in this file",
+        "What are the important sections, dates, or specifications?",
       ];
     }
 

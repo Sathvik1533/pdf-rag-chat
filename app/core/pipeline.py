@@ -668,7 +668,17 @@ class RAGPipeline:
         k = top_k if top_k is not None else self.top_k
         k = min(k, len(session.chunks))
 
-        query_vector = self.embedder.encode([query_text]).astype("float32")
+        # Document-Level Query Context Enrichment:
+        # If user asks for an overview/summary of "this document", anchor with the active filename
+        enriched_query = query_text
+        if session.current_filename:
+            q_lower = query_text.lower()
+            doc_terms = ["document", "file", "overview", "summary", "main objective", "takeaways", "what is this", "main topic"]
+            if any(term in q_lower for term in doc_terms):
+                clean_fn = re.sub(r'\.[a-zA-Z0-9]+$', '', session.current_filename).replace('_', ' ').replace('-', ' ')
+                enriched_query = f"{query_text} {clean_fn}"
+
+        query_vector = self.embedder.encode([enriched_query]).astype("float32")
         scores, indices = session.index.search(query_vector, k)
 
         results: List[Tuple[DocumentChunk, float]] = []
