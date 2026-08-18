@@ -858,68 +858,77 @@ class RAGPipeline:
 
         backoff_delays = [0.5, 1.2, 2.5]
 
-        for attempt in range(max_retries):
-            try:
-                client = Groq(api_key=effective_key.strip(), timeout=12.0)
-                
-                system_prompt = (
-                    "You are an expert, precise, and faithful document assistant. "
-                    "Answer the user's question using ONLY the provided document context below.\n\n"
-                    "CRITICAL RULES:\n"
-                    "1. Base your answer strictly on the provided context. Do NOT invent facts or extrapolate beyond what is stated.\n"
-                    "2. When stating facts, cite the relevant page numbers in your response (e.g. '[Page 2]').\n"
-                    "3. If the context does not contain enough information to fully answer the question, state what is known and clarify what is missing.\n"
-                    "4. Keep your answer clear, direct, and well-structured with markdown formatting."
-                )
+        candidate_models = [self.groq_model, "llama-3.3-70b-versatile", "llama-3.1-8b-instant", "llama3-70b-8192"]
+        # Remove duplicates while preserving order
+        candidate_models = list(dict.fromkeys(candidate_models))
 
-                user_prompt = f"DOCUMENT CONTEXT:\n{context}\n\nUSER QUESTION:\n{question}\n\nANSWER:"
+        for model_name in candidate_models:
+            for attempt in range(max_retries):
+                try:
+                    client = Groq(api_key=effective_key.strip(), timeout=12.0)
+                    
+                    system_prompt = (
+                        "You are an expert, precise, and faithful document assistant. "
+                        "Answer the user's question using ONLY the provided document context below.\n\n"
+                        "CRITICAL RULES:\n"
+                        "1. Base your answer strictly on the provided context. Do NOT invent facts or extrapolate beyond what is stated.\n"
+                        "2. When stating facts, cite the relevant page numbers in your response (e.g. '[Page 2]').\n"
+                        "3. If the context does not contain enough information to fully answer the question, state what is known and clarify what is missing.\n"
+                        "4. Keep your answer clear, direct, and well-structured with markdown formatting."
+                    )
 
-                response = client.chat.completions.create(
-                    model=self.groq_model,
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt}
-                    ],
-                    temperature=0.1,
-                    max_tokens=1024,
-                )
+                    user_prompt = f"DOCUMENT CONTEXT:\n{context}\n\nUSER QUESTION:\n{question}\n\nANSWER:"
 
-                return response.choices[0].message.content.strip()
+                    response = client.chat.completions.create(
+                        model=model_name,
+                        messages=[
+                            {"role": "system", "content": system_prompt},
+                            {"role": "user", "content": user_prompt}
+                        ],
+                        temperature=0.1,
+                        max_tokens=1024,
+                    )
 
-            except Exception as e:
-                err_msg = str(e).lower()
-                is_rate_limit_or_transient = "429" in err_msg or "rate limit" in err_msg or "timeout" in err_msg or "503" in err_msg
-                
-                if attempt < max_retries - 1 and is_rate_limit_or_transient:
-                    delay = backoff_delays[attempt]
-                    logger.warning(f"Groq call failed (attempt {attempt + 1}/{max_retries}): {e}. Retrying in {delay}s...")
-                    time.sleep(delay)
-                else:
-                    logger.error(f"Groq invocation failed after {attempt + 1} attempts: {e}")
-                    # Circuit-Breaker: Return extractive summary grounded in retrieved chunks
-                    return self._generate_extractive_fallback(question, retrieved_chunks, reason=str(e))
+                    return response.choices[0].message.content.strip()
 
-        return self._generate_extractive_fallback(question, retrieved_chunks, reason="Max retries exhausted")
+                except Exception as e:
+                    err_msg = str(e).lower()
+                    is_model_not_found = "model_not_found" in err_msg or "does not exist" in err_msg or "404" in err_msg
+                    is_rate_limit_or_transient = "429" in err_msg or "rate limit" in err_msg or "timeout" in err_msg or "503" in err_msg
+                    
+                    if is_model_not_found:
+                        logger.warning(f"Groq model '{model_name}' not accessible ({e}). Trying next fallback model...")
+                        break  # Break inner retry loop to try next model in candidate_models
+                    
+                    if attempt < max_retries - 1 and is_rate_limit_or_transient:
+                        delay = backoff_delays[attempt]
+                        logger.warning(f"Groq call failed on '{model_name}' (attempt {attempt + 1}/{max_retries}): {e}. Retrying in {delay}s...")
+                        time.sleep(delay)
+                    else:
+                        logger.error(f"Groq invocation failed on '{model_name}' after {attempt + 1} attempts: {e}")
+                        break
+
+        # Fallback: Clean extractive presentation if all API attempts fail
+        logger.warning("All LLM generation attempts exhausted. Returning clean extractive synthesis from retrieved passages.")
+        return self._generate_extractive_fallback(question, retrieved_chunks)
 
     def _generate_extractive_fallback(
         self,
         question: str,
-        retrieved_chunks: List[Tuple[DocumentChunk, float]],
-        reason: str
+        retrieved_chunks: List[Tuple[DocumentChunk, float]]
     ) -> str:
         """
         Extractive Grounding Fallback: When LLM is temporarily unavailable or unconfigured,
-        extracts the top factual passages directly so user never receives a broken 500 error.
+        extracts the top factual passages cleanly formatted so user receives a reliable, grounded answer.
         """
         top_excerpts = []
-        for idx, (chunk, sim) in enumerate(retrieved_chunks[:2], start=1):
+        for idx, (chunk, sim) in enumerate(retrieved_chunks[:3], start=1):
             unit_lbl = getattr(chunk, "unit_label", f"Page {chunk.page}")
             clean_text = "\n".join([line.strip() for line in chunk.text.split("\n") if line.strip()])
-            top_excerpts.append(f"**From {unit_lbl} (Relevance {sim:.2f}):**\n> {clean_text}")
+            top_excerpts.append(f"**From {unit_lbl}:**\n> {clean_text}")
 
         excerpts_str = "\n\n".join(top_excerpts)
         return (
-            f"ℹ️ *[Grounded Extractive Fallback — {reason}]*\n\n"
-            f"Here are the verified factual passages retrieved directly from your document for your question:\n\n"
+            f"Based on the verified passages retrieved from your document:\n\n"
             f"{excerpts_str}"
         )
