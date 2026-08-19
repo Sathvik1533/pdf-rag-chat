@@ -670,12 +670,21 @@ class RAGPipeline:
         k = min(k, len(session.chunks))
 
         # Document-Level Query Context Enrichment:
-        # If user asks for an overview/summary of "this document", anchor with the active filename
+        # ONLY enrich when the user is explicitly asking for a whole-document overview or high-level summary
         enriched_query = query_text
         if session.current_filename:
-            q_lower = query_text.lower()
-            doc_terms = ["document", "file", "overview", "summary", "main objective", "takeaways", "what is this", "main topic"]
-            if any(term in q_lower for term in doc_terms):
+            q_lower = query_text.lower().strip()
+            explicit_overview_phrases = [
+                "what is this document about",
+                "what is this file about",
+                "overview of this document",
+                "summary of this document",
+                "summarize this document",
+                "summarize the document",
+                "main topic of this document",
+                "what is in this document"
+            ]
+            if any(phrase in q_lower for phrase in explicit_overview_phrases):
                 clean_fn = re.sub(r'\.[a-zA-Z0-9]+$', '', session.current_filename).replace('_', ' ').replace('-', ' ')
                 enriched_query = f"{query_text} {clean_fn}"
 
@@ -855,7 +864,7 @@ class RAGPipeline:
         effective_key = api_key or os.getenv("GROQ_API_KEY")
         if not effective_key or effective_key.strip() in ("", "your_groq_api_key_here", "gsk_your_groq_api_key_here"):
             # Extractive Grounded Summary Fallback when no API key configured
-            return self._generate_extractive_fallback(question, retrieved_chunks, reason="GROQ_API_KEY is not configured")
+            return self._generate_extractive_fallback(question, retrieved_chunks)
 
         backoff_delays = [0.5, 1.2, 2.5]
 
