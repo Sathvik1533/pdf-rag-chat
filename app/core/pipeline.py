@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import io
 import os
+import re
 import gc
 import json
 import time
