@@ -633,7 +633,10 @@ document.addEventListener('DOMContentLoaded', () => {
         docMetaStrip.classList.remove('hidden');
       }
       if (!isSilentRehydration) {
-        appendNotice(`**Upload Notice:** ${err.message}`);
+        const cleanMsg = (err.message && !err.message.includes('Traceback') && !err.message.includes('Failed to fetch'))
+          ? err.message
+          : 'Unable to process the document. Please verify the file and try again.';
+        appendNotice(`📁 **Upload Notice:** ${cleanMsg}`);
       }
     }
   }
@@ -2101,7 +2104,10 @@ document.addEventListener('DOMContentLoaded', () => {
         if (response.status === 400 && data.detail && data.detail.includes('upload')) {
           appendNotice(`📂 **No document loaded.** Please upload a file using the dropzone on the left, or pick one from **Saved Files**.`);
         } else {
-          appendNotice(`❌ **Notice:** ${data.detail || 'Could not generate answer.'}`);
+          const userFriendlyDetail = (data.detail && !data.detail.includes('Traceback') && !data.detail.includes('NameError')) 
+            ? data.detail 
+            : 'We encountered an issue analyzing your document. Please try again.';
+          appendNotice(`⚠️ **Notice:** ${userFriendlyDetail}`);
         }
         return;
       }
@@ -2114,7 +2120,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     } catch (err) {
       removeLoadingBubble(loaderId);
-      appendNotice(`❌ **Network Notice:** ${err.message}`);
+      appendNotice(`⚠️ **Connection Notice:** Unable to reach the server. Please check your network connection and try again.`);
     } finally {
       composerInput.disabled = false;
       composerSend.disabled = false;

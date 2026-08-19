@@ -282,7 +282,7 @@ async def upload_document(request: Request, file: UploadFile = File(...)):
         raise HTTPException(status_code=422, detail=str(ve))
     except Exception as e:
         logger.error(f"[{session_id}] Unexpected error during file processing: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Failed to process file: {str(e)}")
+        raise HTTPException(status_code=500, detail="Unable to process the uploaded document. Please verify the file format and try again.")
 
 
 @app.post("/chat", response_model=ChatResponse, tags=["RAG"])
@@ -302,7 +302,7 @@ async def chat_with_document(request: Request, req: ChatRequest):
     if session.index is None or len(session.chunks) == 0:
         raise HTTPException(
             status_code=400,
-            detail="No document has been uploaded in your session yet. Please upload a file to `/upload` first."
+            detail="No document is currently active in your session. Please upload a document first."
         )
 
     try:
@@ -338,7 +338,7 @@ async def chat_with_document(request: Request, req: ChatRequest):
 
     except Exception as e:
         logger.error(f"[{session_id}] Error during chat query: {e}", exc_info=True)
-        raise HTTPException(status_code=500, detail=f"Query failed: {str(e)}")
+        raise HTTPException(status_code=500, detail="We encountered an issue analyzing your document. Please try again.")
 
 
 # -----------------------------------------------------------------------------
