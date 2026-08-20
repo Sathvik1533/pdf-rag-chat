@@ -682,7 +682,15 @@ class RAGPipeline:
                 "summarize this document",
                 "summarize the document",
                 "main topic of this document",
-                "what is in this document"
+                "what is in this document",
+                # App suggested questions
+                "summarize the key points",
+                "key points and findings",
+                "main topic and overview",
+                "important sections",
+                "key findings in this",
+                "summarize the key",
+                "what is the main topic",
             ]
             if any(phrase in q_lower for phrase in explicit_overview_phrases):
                 clean_fn = re.sub(r'\.[a-zA-Z0-9]+$', '', session.current_filename).replace('_', ' ').replace('-', ' ')
