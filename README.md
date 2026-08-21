@@ -14,7 +14,15 @@
 
 ---
 
-[🌐 **Live Production Demo**](https://pdf-rag-chat-nylf.onrender.com) • [📖 **Architectural Deep-Dive**](EXPLAINER.md) • [📊 **Benchmarks**](#-production-benchmarks--verified-metrics) • [⚡ **Quickstart**](#-quickstart) • [📡 **API Reference**](#-api-reference) • [🧪 **Test Suite**](#-automated-testing)
+## 🔗 Quick Links
+
+| | |
+|:---:|:---:|
+| [🌐 **Live Demo** — Try it now](https://pdf-rag-chat-nylf.onrender.com) | [💻 **GitHub Repo** — View Source](https://github.com/Sathvik1533/pdf-rag-chat) |
+
+---
+
+[📖 **Architectural Deep-Dive**](EXPLAINER.md) • [📊 **Benchmarks**](#-production-benchmarks--verified-metrics) • [⚡ **Quickstart**](#-quickstart) • [📡 **API Reference**](#-api-reference) • [🧪 **Test Suite**](#-automated-testing)
 
 </div>
 

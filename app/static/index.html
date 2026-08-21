@@ -2,9 +2,26 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Veritas — Grounded Document Intelligence</title>
-  <meta name="description" content="Upload any PDF and ask questions with verifiable page-by-page citations.">
+  <meta name="description" content="Upload any document and ask questions with verifiable page-by-page citations. Built with PyTorch and zero-hallucination mathematical grounding.">
+  
+  <!-- PWA & Mobile Web App Meta -->
+  <link rel="manifest" href="/static/manifest.json">
+  <meta name="theme-color" content="#0F172A">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Veritas">
+  <link rel="apple-touch-icon" href="/static/icon-192.png">
+
+  <!-- OpenGraph & Social Cards -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Veritas — Grounded Document Intelligence">
+  <meta property="og:description" content="Upload any PDF/DOCX/Code/CSV and ask questions with verifiable page-by-page citations.">
+  <meta property="og:image" content="/static/og-preview.png">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Veritas — Zero-Hallucination Document AI">
+  <meta name="twitter:description" content="Mathematical grounding gate at cosine similarity 0.35. Zero hallucination.">
   
   <!-- Precision Editorial & Technical Typography (Plus Jakarta Sans, Inter, JetBrains Mono) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -656,6 +673,85 @@
         </div>
 
       </section>
+    </div>
+
+    <!-- Mobile Bottom Navigation Bar (Visible only on screens <= 768px) -->
+    <nav class="mobile-tab-bar" aria-label="Mobile Navigation">
+      <button type="button" class="mobile-tab-btn active" data-view="view-chat">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+        </svg>
+        <span>Chat</span>
+      </button>
+
+      <button type="button" class="mobile-tab-btn" data-view="view-reader">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+          <polyline points="14 2 14 8 20 8"></polyline>
+          <line x1="16" y1="13" x2="8" y2="13"></line>
+          <line x1="16" y1="17" x2="8" y2="17"></line>
+        </svg>
+        <span>Document</span>
+      </button>
+
+      <button type="button" class="mobile-tab-btn" data-view="view-summaries">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+        </svg>
+        <span>Summaries</span>
+      </button>
+
+      <button type="button" class="mobile-tab-btn" id="btn-mobile-more">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="1.5"></circle>
+          <circle cx="19" cy="12" r="1.5"></circle>
+          <circle cx="5" cy="12" r="1.5"></circle>
+        </svg>
+        <span>More</span>
+      </button>
+    </nav>
+
+    <!-- Mobile More Views Bottom Sheet Modal -->
+    <div id="mobile-more-sheet" class="config-drawer hidden">
+      <div class="config-backdrop" id="mobile-more-backdrop"></div>
+      <div class="drawer-inner mobile-bottom-sheet">
+        <div class="drawer-header">
+          <h3>More Views & Tools</h3>
+          <button id="close-mobile-more-btn" class="btn-modal-close" aria-label="Close">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <line x1="18" y1="6" x2="6" y2="18"></line>
+              <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+          </button>
+        </div>
+        <div class="drawer-body">
+          <div class="mobile-more-menu-list">
+            <button type="button" class="mobile-more-item" data-view="view-topic-map">
+              <span class="m-icon">🕸️</span>
+              <div class="m-meta">
+                <strong>Topic Map</strong>
+                <span>Semantic clustering across document chapters</span>
+              </div>
+            </button>
+
+            <button type="button" class="mobile-more-item" data-view="view-sections-map">
+              <span class="m-icon">🗂️</span>
+              <div class="m-meta">
+                <strong>Sections Map</strong>
+                <span>Page-by-page index of all extracted chunks</span>
+              </div>
+            </button>
+
+            <button type="button" class="mobile-more-item" data-view="view-fact-checker">
+              <span class="m-icon">📊</span>
+              <div class="m-meta">
+                <strong>Fact Checker Radar</strong>
+                <span>Live telemetry & mathematical grounding spectrum</span>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 

@@ -21,7 +21,7 @@
     "total_pages": 1,
     "total_chunks": 1,
     "document_size_bytes": 164,
-    "saved_at": 1786893725.631084
+    "saved_at": 1787294582.489423
   },
   "e0d29765f90207b8": {
     "session_id": "test_session",
@@ -45,7 +45,7 @@
     "total_pages": 1,
     "total_chunks": 1,
     "document_size_bytes": 100,
-    "saved_at": 1787128879.8767848
+    "saved_at": 1787294581.872923
   },
   "821b4cb06de8a211": {
     "session_id": "test_switching_sess_99",
@@ -53,7 +53,7 @@
     "total_pages": 1,
     "total_chunks": 1,
     "document_size_bytes": 51,
-    "saved_at": 1787128880.0347662
+    "saved_at": 1787294582.03197
   },
   "1f5d92fe1331407f": {
     "session_id": "sess_user_alpha_01",
@@ -61,7 +61,7 @@
     "total_pages": 1,
     "total_chunks": 1,
     "document_size_bytes": 47,
-    "saved_at": 1787128880.176899
+    "saved_at": 1787294582.218682
   },
   "93b16327f202792a": {
     "session_id": "test_sess",
@@ -70,5 +70,13 @@
     "total_chunks": 1,
     "document_size_bytes": 147,
     "saved_at": 1787128855.040927
+  },
+  "8b466cb6f6bc1f53": {
+    "session_id": "benchmark-session",
+    "filename": "Project_Orion_Spec.md",
+    "total_pages": 1,
+    "total_chunks": 3,
+    "document_size_bytes": 984,
+    "saved_at": 1787293791.4982889
   }
 }

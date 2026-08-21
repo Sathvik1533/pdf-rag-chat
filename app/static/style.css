@@ -2415,7 +2415,14 @@ body.theme-dark .btn-history-load {
   opacity: 1;
 }
 
-/* Responsive Nav Layout */
+/* ==========================================================================
+   PRODUCTION RESPONSIVE & MOBILE LAYOUT SYSTEM
+   ========================================================================== */
+
+.mobile-tab-bar {
+  display: none;
+}
+
 @media (max-width: 960px) {
   .telemetry-pills {
     display: none;
@@ -2423,19 +2430,207 @@ body.theme-dark .btn-history-load {
 }
 
 @media (max-width: 768px) {
+  /* 1. Header Adaptations */
   .brand-titles {
     display: none;
   }
   .veritas-nav {
-    padding: 0.45rem 0.65rem;
+    padding: 0.45rem 0.75rem;
+    height: 52px;
   }
   .nav-right {
-    gap: 0.25rem;
+    gap: 0.35rem;
   }
   .btn-sm span {
     display: none;
   }
   .btn-sm {
-    padding: 0.35rem 0.45rem;
+    padding: 0.45rem 0.55rem;
+    min-height: 38px;
+    min-width: 38px;
+  }
+
+  /* 2. Workspace Layout (Single Column) */
+  .veritas-studio-layout {
+    display: block;
+    height: calc(100vh - 52px);
+    overflow: hidden;
+    position: relative;
+  }
+
+  .studio-sidebar {
+    display: none !important;
+  }
+
+  .studio-main {
+    width: 100% !important;
+    height: calc(100vh - 52px - 62px) !important;
+    padding-bottom: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* 3. Chat Messages & Full Width Layout */
+  .chat-view-container {
+    max-width: 100%;
+    padding: 0.5rem 0.75rem;
+  }
+
+  .chat-thread-container {
+    padding: 0.5rem 0.75rem 6.5rem 0.75rem;
+  }
+
+  .chat-message-row.user .chat-bubble {
+    max-width: 92%;
+  }
+
+  .chat-message-row.assistant .chat-bubble {
+    max-width: 96%;
+  }
+
+  .chat-composer-container {
+    position: fixed;
+    bottom: 60px;
+    left: 0;
+    right: 0;
+    width: 100%;
+    background: var(--bg-app);
+    padding: 0.45rem 0.75rem;
+    padding-bottom: calc(0.45rem + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid var(--border-precision);
+    z-index: 90;
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+
+  .composer-box {
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+  }
+
+  /* 4. Mobile Bottom Tab Navigation Bar */
+  .mobile-tab-bar {
+    display: flex;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 60px;
+    background: var(--bg-card);
+    border-top: 1px solid var(--border-precision);
+    z-index: 100;
+    justify-content: space-around;
+    align-items: center;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    box-shadow: 0 -4px 16px rgba(11, 15, 23, 0.06);
+  }
+
+  .mobile-tab-btn {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    height: 100%;
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 0.68rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s ease;
+    padding: 0.25rem 0;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .mobile-tab-btn svg {
+    stroke: var(--text-muted);
+    transition: stroke 0.15s ease;
+  }
+
+  .mobile-tab-btn.active {
+    color: var(--border-focus);
+  }
+
+  .mobile-tab-btn.active svg {
+    stroke: var(--border-focus);
+  }
+
+  /* 5. Mobile Bottom Sheet Modal */
+  .drawer-inner.mobile-bottom-sheet {
+    top: auto;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    max-height: 80vh;
+    border-radius: 20px 20px 0 0;
+    border-left: none;
+    border-top: 1px solid var(--border-precision);
+    box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.15);
+    animation: slideUpBottom 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  @keyframes slideUpBottom {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+
+  .mobile-more-menu-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    padding: 0.5rem 0;
+  }
+
+  .mobile-more-item {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    width: 100%;
+    padding: 0.85rem 1rem;
+    background: var(--bg-card-subtle);
+    border: 1px solid var(--border-precision);
+    border-radius: var(--r-sm);
+    text-align: left;
+    cursor: pointer;
+    transition: background 0.15s ease;
+    min-height: 52px;
+  }
+
+  .mobile-more-item:hover, .mobile-more-item:active {
+    background: var(--bg-card-hover);
+  }
+
+  .mobile-more-item .m-icon {
+    font-size: 1.4rem;
+  }
+
+  .mobile-more-item .m-meta strong {
+    display: block;
+    font-size: 0.9rem;
+    color: var(--text-main);
+  }
+
+  .mobile-more-item .m-meta span {
+    display: block;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  /* 6. Document Reader on Mobile */
+  .reader-view-container {
+    padding: 0.75rem;
+  }
+
+  .reader-sheet {
+    padding: 1rem;
+    font-size: 0.92rem;
   }
 }
+

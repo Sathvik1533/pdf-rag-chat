@@ -413,13 +413,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // --------------------------------------------------------------------------
   // --------------------------------------------------------------------------
-  // Studio Sidebar View Switching
+  // Studio Sidebar & Mobile Tab View Switching
   // --------------------------------------------------------------------------
   const sidebarNavItems = document.querySelectorAll('.sidebar-nav-item[data-view]');
+  const mobileTabBtns = document.querySelectorAll('.mobile-tab-btn[data-view]');
   const studioViews = document.querySelectorAll('.studio-view');
 
   function activateView(viewId) {
     sidebarNavItems.forEach(b => {
+      b.classList.toggle('active', b.getAttribute('data-view') === viewId);
+    });
+    mobileTabBtns.forEach(b => {
       b.classList.toggle('active', b.getAttribute('data-view') === viewId);
     });
     studioViews.forEach(v => {
@@ -435,6 +439,43 @@ document.addEventListener('DOMContentLoaded', () => {
     btn.addEventListener('click', () => {
       const viewId = btn.getAttribute('data-view');
       activateView(viewId);
+    });
+  });
+
+  mobileTabBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      const viewId = btn.getAttribute('data-view');
+      activateView(viewId);
+    });
+  });
+
+  // Mobile More Views Bottom Sheet
+  const btnMobileMore = document.getElementById('btn-mobile-more');
+  const mobileMoreSheet = document.getElementById('mobile-more-sheet');
+  const closeMobileMoreBtn = document.getElementById('close-mobile-more-btn');
+  const mobileMoreBackdrop = document.getElementById('mobile-more-backdrop');
+  const mobileMoreItems = document.querySelectorAll('.mobile-more-item[data-view]');
+
+  if (btnMobileMore && mobileMoreSheet) {
+    btnMobileMore.addEventListener('click', () => {
+      mobileMoreSheet.classList.remove('hidden');
+    });
+  }
+  if (closeMobileMoreBtn && mobileMoreSheet) {
+    closeMobileMoreBtn.addEventListener('click', () => {
+      mobileMoreSheet.classList.add('hidden');
+    });
+  }
+  if (mobileMoreBackdrop && mobileMoreSheet) {
+    mobileMoreBackdrop.addEventListener('click', () => {
+      mobileMoreSheet.classList.add('hidden');
+    });
+  }
+  mobileMoreItems.forEach(item => {
+    item.addEventListener('click', () => {
+      const viewId = item.getAttribute('data-view');
+      activateView(viewId);
+      if (mobileMoreSheet) mobileMoreSheet.classList.add('hidden');
     });
   });
 
