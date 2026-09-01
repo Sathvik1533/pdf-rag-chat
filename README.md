@@ -226,11 +226,6 @@ pdf-rag-chat/
 
 Deployed on [Render](https://render.com) using `render.yaml` — push to GitHub, create a Render Blueprint, set `GROQ_API_KEY`, deploy.
 
----
-
-## Notes
-
-This was built as part of a workshop project with guidance from mentors Akhil Kvk and Dhanush G. Some of the code and this README were drafted with AI assistance (Antigravity/Gemini); all numbers above are from my own local test/benchmark runs, not the original draft's estimates.
 
 ## License
 
