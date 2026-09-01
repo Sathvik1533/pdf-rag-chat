@@ -1,209 +1,97 @@
 <div align="center">
 
-# ⚡ VERITAS — Grounded Document AI & RAG Studio
+# ⚡ Veritas — Grounded Document RAG
 
-### *Sub-Millisecond Multi-Format Document Intelligence with Verifiable Page Citations, Zero-Hallucination Guardrails, Disk-Backed Vector Persistence, and Multi-Tenant Isolation*
+### A retrieval-augmented Q&A system that refuses to guess when it isn't sure.
 
-[![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688.svg?style=for-the-badge&logo=FastAPI&logoColor=white)](https://fastapi.tiangolo.com)
-[![Python](https://img.shields.io/badge/Python-3.11+-3776AB.svg?style=for-the-badge&logo=Python&logoColor=white)](https://python.org)
-[![Groq LLaMA 3.3](https://img.shields.io/badge/Groq-LLaMA_3.3_70B-F55036.svg?style=for-the-badge&logo=fastly&logoColor=white)](https://groq.com)
-[![FAISS](https://img.shields.io/badge/FAISS-Dense_Search-0080FF.svg?style=for-the-badge&logo=meta&logoColor=white)](https://github.com/facebookresearch/faiss)
-[![License](https://img.shields.io/badge/License-MIT-blue.svg?style=for-the-badge)](LICENSE)
-[![Tests](https://img.shields.io/badge/Tests-16%2F16_Passing-brightgreen.svg?style=for-the-badge)](tests/)
-[![Status](https://img.shields.io/badge/Production-Live-success.svg?style=for-the-badge)](https://pdf-rag-chat-nylf.onrender.com)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688.svg?logo=FastAPI&logoColor=white)](https://fastapi.tiangolo.com)
+[![Python](https://img.shields.io/badge/Python-3.11+-3776AB.svg?logo=Python&logoColor=white)](https://python.org)
+[![Groq LLaMA 3.3](https://img.shields.io/badge/Groq-LLaMA_3.3_70B-F55036.svg?logo=fastly&logoColor=white)](https://groq.com)
+[![FAISS](https://img.shields.io/badge/FAISS-Dense_Search-0080FF.svg?logo=meta&logoColor=white)](https://github.com/facebookresearch/faiss)
+[![Tests](https://img.shields.io/badge/Tests-16%2F16_Passing-brightgreen.svg)](tests/)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
----
-
-## 🔗 Quick Links
-
-| | |
-|:---:|:---:|
-| [🌐 **Live Demo** — Try it now](https://pdf-rag-chat-nylf.onrender.com) | [💻 **GitHub Repo** — View Source](https://github.com/Sathvik1533/pdf-rag-chat) |
-
----
+[🌐 Live Demo](https://pdf-rag-chat-nylf.onrender.com) · [💻 GitHub Repo](https://github.com/Sathvik1533/pdf-rag-chat)
 
 </div>
 
 ---
 
-## 🌟 Executive Summary
+## What this is
 
-**Veritas** is a deterministic **Retrieval-Augmented Generation (RAG)** platform built to reduce hallucinations in document Q&A. By enforcing a **cosine similarity grounding floor** prior to LLM synthesis, Veritas anchors every generated response to verifiable source passages with exact page-level citations.
+Most RAG demos will answer any question you throw at them, whether or not the answer is actually in the document — they just make something plausible up. Veritas is built around one rule: **if the retrieved content isn't similar enough to the question, don't call the LLM at all — just say so.**
 
-Engineered with a lightweight memory footprint (~0.2MB delta per ingestion), Veritas achieves **sub-millisecond vector retrieval (0.305ms avg)** across 9 distinct file formats, delivers **disk-serialized vector persistence across container restarts**, provides **per-user multi-tenant isolation**, and features an **exponential backoff circuit breaker** with grounded extractive fallback.
-
----
-
-## 💎 Core Capabilities
-              ┌────────────────────────────────────────────────────────┐
-              │                 VERITAS CORE ENGINE                    │
-              └──────────────────────────┬─────────────────────────────┘
-                                         │
-  ┌─────────────────────────┬────────────┴────────────┬─────────────────────────┐
-  ▼                         ▼                         ▼                         ▼
-
-┌──────────────┐ ┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
-│ Multi-Tenant│ │ Disk-Persistent │ │ Code-Level │ │ Production API │
-│ Isolation │ │ FAISS Storage │ │ Grounding Gate │ │ Firewall & │
-│ (Per-Session)│ │ (Auto-Restore) │ │ (Cosine >=0.35) │ │ Rate Limiting │
-└──────────────┘ └─────────────────┘ └─────────────────┘ └─────────────────┘
-
-
-1. **🛡️ Deterministic Grounding Guardrail**: Calculates cosine similarity against dense FAISS indices. Queries scoring below the configured threshold (`0.35`) trigger an instant, token-free refusal: *"I couldn't find anything about that in this document."*
-2. **💾 Disk-Backed Vector Persistence**: FAISS index binaries and chunk catalogs are serialized to `./data/storage` and restored in **~2.6ms**.
-3. **🔒 Multi-Tenant Session Isolation**: Complete per-user namespace scoping via `X-Session-ID`. Verified zero vector overlap between sessions in testing.
-4. **🚦 Sliding-Window Rate Limiting & 15MB Size Firewall**: Protects `/upload` (20 req/min) and `/chat` (45 req/min) with HTTP 429 throttling and a 15MB upload ceiling (HTTP 413).
-5. **⚡ Circuit Breaker & Multi-Model LLM Resilience**: Automatic cascade across Groq models (`llama-3.3-70b-versatile` → `llama-3.1-8b-instant` → `llama3-70b-8192`) with 3-tier exponential retry, falling back to extractive synthesis on failure.
-6. **📄 Universal 9-Format Ingestion**: PDF, Word (.docx), PowerPoint (.pptx), Excel (.xlsx), CSV, TSV, JSON, YAML, Source Code (.py, .js, .ts, .sql), Markdown, and Plain Text.
-7. **🕸️ Interactive 2D Knowledge Graph**: Maps document semantic clusters into a physics-simulated canvas with click-to-jump document navigation.
-8. **🎙️ Speech & Audio**: Live voice dictation (Web Speech API) and TTS read-aloud with animated waveform and live captions.
-9. **🗃️ Chat Session History**: Snapshots conversations to localStorage (up to 30 sessions) with a read-only restore viewer.
-10. **✏️ Inline Message Editing & Deletion**: In-place prompt editing and Q&A deletion with synchronized thread history.
-11. **🔄 Browser-to-Backend State Reconciliation**: Re-hydrates FAISS index from browser IndexedDB cache if the server container slept.
+It's a document Q&A backend (FastAPI + FAISS + Groq) that ingests 9 file formats, answers questions with exact page citations, and refuses out-of-scope questions before spending a single token.
 
 ---
 
-## 📊 Verified Benchmarks
+## How the grounding gate works
 
-*Run on Apple M-Series via `scripts/benchmark_rag.py`, 1,000 query iterations, 25-page document (5 sections, 74 chunks):*
+Every query gets embedded and compared against the document's vector index using cosine similarity. The top match has to clear a threshold (`0.35`) before the LLM is even called:
 
-| Metric | Measured Value |
-| :--- | :--- |
-| **Vector Retrieval Latency (Avg)** | **0.305 ms** |
-| **Vector Retrieval Latency (P95)** | **0.354 ms** |
-| **Vector Retrieval Latency (P99)** | **0.493 ms** |
-| **Query Throughput** | **~3,275 queries/sec/core** |
-| **Document Ingestion (25 pages / 74 chunks)** | **340.16 ms** |
-| **Disk State Restoration Time** | **2.61 ms** |
-| **Memory Consumption Delta** | **0.19 MB** (Peak 0.37 MB) |
-| **Multi-Tenant Data Isolation** | **100% Isolated** (verified across session IDs) |
-| **Rate Limiter Accuracy** | **30/30 allowed, 20/20 throttled** |
+- **Below 0.35** → instant refusal, `"I couldn't find anything about that in this document."` Zero LLM calls, zero tokens spent.
+- **Above 0.35** → the matched chunks go to Groq's LLaMA 3.3 70B for synthesis, and the response is returned with the exact page and excerpt it came from.
 
-To reproduce:
+The 0.35 value was set manually (not from a formal threshold sweep) and then validated by hand — asking the system unrelated questions (e.g. "what's the capital of France?") on a document that doesn't mention it, and confirming it refuses instead of hallucinating an answer. It reliably does.
+
+```mermaid
+flowchart TD
+    A[📄 Document Upload] --> B[Extractor: 9 file formats]
+    B --> C[Chunker: 500 chars, 50 overlap]
+    C --> D[Embed + Index in FAISS]
+
+    E[❓ User Question] --> F[Embed Query]
+    F --> G[Cosine Similarity Search]
+    D -.-> G
+
+    G --> H{Top score >= 0.35?}
+    H -- No --> I[🛑 Refuse — 0 tokens spent]
+    H -- Yes --> J[Groq LLaMA-3.3-70B Synthesis]
+    J --> K[💬 Answer + Page Citation]
+```
+
+---
+
+## What it actually does
+
+- **Grounding gate** — described above. Deterministic, not a prompt-level instruction the model can ignore.
+- **Disk-backed persistence** — FAISS indices and chunk data are saved to `./data/storage` and reloaded on restart, so a server sleep/restart doesn't wipe your uploaded documents.
+- **Per-session isolation** — each session (`X-Session-ID`) gets its own document space. Tested with two concurrent sessions; no cross-contamination.
+- **Rate limiting** — sliding-window limits on `/upload` (20/min) and `/chat` (45/min), plus a 15MB upload size cap.
+- **Model fallback** — if the primary Groq model fails, it retries with exponential backoff and falls back to two other models before giving up, then falls back further to an extractive (non-LLM) answer rather than erroring out.
+- **9 file formats** — PDF, DOCX, PPTX, XLSX, CSV, TSV, JSON, YAML, source code (.py/.js/.ts/.sql), Markdown, plain text.
+- **Voice input/output** — live speech-to-text via the browser's Web Speech API for asking questions, and text-to-speech read-aloud for answers, with live captions. Built this with Antigravity as an accessibility/UX addition, not a core RAG feature.
+- **Chat history** — sessions are saved to localStorage (up to 30) and can be reopened in a read-only viewer.
+- **Inline editing** — edit or delete a past question/answer pair in place, with the thread staying in sync.
+
+---
+
+## Verified benchmarks
+
+Run on my own machine (Apple M-series) with `scripts/benchmark_rag.py`, 1,000 query iterations against a 25-page / 74-chunk document. Raw output, not rounded up:
+
+| Metric | Value |
+|---|---|
+| Vector retrieval latency (avg) | 0.305 ms |
+| Vector retrieval latency (P95) | 0.354 ms |
+| Vector retrieval latency (P99) | 0.493 ms |
+| Query throughput | ~3,275 queries/sec/core |
+| Document ingestion (25 pages, 74 chunks) | 340.16 ms |
+| Disk restore time | 2.61 ms |
+| Memory delta during ingestion | 0.19 MB (peak 0.37 MB) |
+| Multi-tenant isolation | 100% (verified across session IDs) |
+| Rate limiter | 30/30 allowed, 20/20 correctly throttled |
+
+Reproduce it yourself:
 ```bash
 PYTHONPATH=. python3 scripts/benchmark_rag.py
 ```
 
 ---
 
-## 🏛️ System Architecture
+## Tests
 
-```mermaid
-flowchart TD
-    A[📄 Document Upload: PDF, DOCX, XLSX, Code] --> B[Universal Magic-Byte Extractor]
-    B --> C[Recursive Syntactic Chunker\nchunk_size=500, overlap=50]
-    C --> D[Dense Vectorizer]
-    D --> E[(⚡ In-Memory FAISS IndexFlatIP\nSession-Scoped & Disk Serialized)]
-    
-    F[👤 User Query / Voice Input] --> G[Session Rate Limiter]
-    G --> H[Query Vectorizer]
-    H --> I[Top-K Nearest Neighbor Retrieval]
-    E -.-> I
-    
-    I --> J{Max Cosine Similarity\n>= Grounding Threshold 0.35?}
-    
-    J -- NO: Out-of-Scope --> K[🛑 Deterministic Refusal\n0 Tokens Consumed]
-    
-    J -- YES: Grounded Evidence --> L[Groq LLaMA-3.3-70B Synthesis\nExponential Backoff + Extractive Fallback]
-    L --> M[💬 Grounded Response + Exact Page Citations]
-```
-
----
-
-## 🚀 Quickstart
-
-### Prerequisites
-- Python 3.11+
-- Free [Groq Cloud API Key](https://console.groq.com/keys)
-
-### 1. Clone & Setup
-```bash
-git clone https://github.com/Sathvik1533/pdf-rag-chat.git
-cd pdf-rag-chat
-
-python3 -m venv venv
-source venv/bin/activate
-
-pip install -r requirements.txt
-```
-
-### 2. Configure Environment Variables
-```bash
-cp .env.example .env
-```
-```env
-GROQ_API_KEY=gsk_your_groq_api_key_here
-GROQ_MODEL=llama-3.3-70b-versatile
-
-VERITAS_STORAGE_DIR=./data/storage
-GROUNDING_THRESHOLD=0.35
-TOP_K=4
-CHUNK_SIZE=500
-CHUNK_OVERLAP=50
-```
-
-### 3. Launch Development Server
-```bash
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
-Open **[http://localhost:8000](http://localhost:8000)**.
-
----
-
-## 📡 API Reference
-
-### 1. Document Ingestion
-```http
-POST /upload
-Content-Type: multipart/form-data
-X-Session-ID: session_client_alpha
-```
-
-### 2. Grounded Question Answering
-```http
-POST /chat
-Content-Type: application/json
-X-Session-ID: session_alpha
-```
-```json
-{
-  "question": "What is the capital expenditure budget for Phase 1?",
-  "threshold": 0.35
-}
-```
-Response:
-```json
-{
-  "answer": "The approved capital budget for Phase 1 is $4.85 million USD [Page 2].",
-  "grounded": true,
-  "top_similarity": 0.847,
-  "threshold": 0.35,
-  "citations": [
-    {
-      "page": 2,
-      "excerpt": "Financial Budget and Target Launch Milestones: Total capital budget is $4.85 million USD for Phase 1.",
-      "similarity_score": 0.847,
-      "chunk_id": 1,
-      "unit_label": "Page 2"
-    }
-  ]
-}
-```
-
-### 3. Out-of-Scope Refusal
-```json
-{
-  "answer": "I couldn't find anything about that in this document.",
-  "grounded": false,
-  "top_similarity": 0.015,
-  "threshold": 0.35,
-  "citations": []
-}
-```
-
----
-
-## 🧪 Automated Testing
+16 tests, all passing — covers chunking, in-scope retrieval, out-of-scope refusal, session isolation, and extraction across all 9 file formats.
 
 ```bash
 pytest tests/ -v
@@ -236,56 +124,118 @@ tests/test_universal_formats.py::test_truncated_pdf_stream_recovery PASSED
 
 ---
 
-## 📁 Repository Directory Map
+## Quickstart
+
+**Requirements:** Python 3.11+, a free [Groq API key](https://console.groq.com/keys)
+
+```bash
+git clone https://github.com/Sathvik1533/pdf-rag-chat.git
+cd pdf-rag-chat
+
+python3 -m venv venv
+source venv/bin/activate
+
+pip install -r requirements.txt
+cp .env.example .env  # then add your GROQ_API_KEY
+```
+
+```env
+GROQ_API_KEY=gsk_your_groq_api_key_here
+GROQ_MODEL=llama-3.3-70b-versatile
+VERITAS_STORAGE_DIR=./data/storage
+GROUNDING_THRESHOLD=0.35
+TOP_K=4
+CHUNK_SIZE=500
+CHUNK_OVERLAP=50
+```
+
+```bash
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+Open [http://localhost:8000](http://localhost:8000).
+
+---
+
+## API
+
+**Upload a document**
+```http
+POST /upload
+Content-Type: multipart/form-data
+X-Session-ID: session_alpha
+```
+
+**Ask a question**
+```http
+POST /chat
+Content-Type: application/json
+X-Session-ID: session_alpha
+```
+```json
+{ "question": "What is the capital expenditure budget for Phase 1?", "threshold": 0.35 }
+```
+
+**In-scope response:**
+```json
+{
+  "answer": "The approved capital budget for Phase 1 is $4.85 million USD [Page 2].",
+  "grounded": true,
+  "top_similarity": 0.847,
+  "citations": [
+    { "page": 2, "excerpt": "Total capital budget is $4.85 million USD for Phase 1.", "similarity_score": 0.847 }
+  ]
+}
+```
+
+**Out-of-scope response:**
+```json
+{
+  "answer": "I couldn't find anything about that in this document.",
+  "grounded": false,
+  "top_similarity": 0.015,
+  "citations": []
+}
+```
+
+---
+
+## Repo structure
 
 ```text
 pdf-rag-chat/
 ├── app/
 │   ├── core/
-│   │   ├── extractors.py
-│   │   ├── pipeline.py
-│   │   └── rate_limiter.py
-│   ├── static/
-│   │   ├── app.js
-│   │   ├── index.html
-│   │   └── style.css
+│   │   ├── extractors.py      # 9-format extraction
+│   │   ├── pipeline.py        # FAISS index, persistence, Groq retry logic
+│   │   └── rate_limiter.py    # Sliding-window rate limiter
+│   ├── static/                # Frontend (voice, IndexedDB, chat UI)
 │   ├── config.py
 │   └── main.py
 ├── tests/
-│   ├── test_rag.py
-│   └── test_universal_formats.py
 ├── scripts/
-│   ├── benchmark_rag.py
-│   └── verify_rag.py
-├── data/storage/
-├── Procfile
-├── render.yaml
+│   └── benchmark_rag.py
+├── data/storage/               # Persisted FAISS indices
 ├── requirements.txt
 └── README.md
 ```
 
 ---
 
-## 🚢 Production Deployment
+## Deployment
 
-Deploy to [Render](https://render.com) using `render.yaml`:
-1. Push repository to GitHub.
-2. Render Dashboard → **New +** → **Blueprint**.
-3. Select repository, set `GROQ_API_KEY`.
-4. Apply.
+Deployed on [Render](https://render.com) using `render.yaml` — push to GitHub, create a Render Blueprint, set `GROQ_API_KEY`, deploy.
 
 ---
 
-## 🤝 Acknowledgements
+## Notes
 
-Thanks to mentors **Akhil Kvk** and **Dhanush G.** for guidance during the build process.
+This was built as part of a workshop project with guidance from mentors Akhil Kvk and Dhanush G. Some of the code and this README were drafted with AI assistance (Antigravity/Gemini); all numbers above are from my own local test/benchmark runs, not the original draft's estimates.
 
----
+## License
 
-## 📜 License
-
-Distributed under the **MIT License**. See [`LICENSE`](LICENSE).
+MIT — see [LICENSE](LICENSE).
 
 <div align="center">
-<b>Built by <a href="https://github.com/Sathvik1533">Sathvik1533</a></b>
+<sub>Built by <a href="https://github.com/Sathvik1533">Sathvik1533</a></sub>
 </div>
